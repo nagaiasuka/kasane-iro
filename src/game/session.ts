@@ -66,3 +66,12 @@ export function ranking(session: GameSession) {
 export function remainingSeconds(deadline: number, now: number): number {
   return Math.max(0, Math.ceil((deadline - now) / 1000));
 }
+
+
+// 結果UIからも確認し、誤った画面接続で他人の回答・正解が漏れないようにする。
+export function canRevealAnswer(session: GameSession, questionId: string): boolean {
+  const completed = session.questions.some(q => q.id === questionId) &&
+    session.players.every(player => session.answers.some(a => a.playerId === player.id && a.questionId === questionId));
+  return completed && (session.gameStatus === 'finished' ||
+    (session.gameStatus === 'questionResult' && session.settings.resultTiming === 'question' && session.currentQuestion.id === questionId));
+}

@@ -36,22 +36,41 @@ with sync_playwright() as p:
         if players>1: page.get_by_role('textbox').nth(1).fill(' ')
         click('ゲームをはじめる')
     click('遊び方')
-    for heading in ['1　お題の色を見よう', '2　カードを重ねよう', '3　重ねる順番も大切', '4　お題に近づけて回答']:
-        assert page.get_by_text(heading,exact=True).count()==1
-    page.screenshot(path='/tmp/kasane-iro-phase4-howto.png',full_page=True)
+    page.get_by_text('遊び方 1/3',exact=True).wait_for()
+    click('次へ'); page.get_by_text('遊び方 2/3',exact=True).wait_for()
+    assert 'C70' not in page.locator('body').inner_text()
+    click('戻る'); page.get_by_text('遊び方 1/3',exact=True).wait_for()
+    click('次へ'); click('次へ'); page.get_by_text('遊び方 3/3',exact=True).wait_for()
     click('わかった')
+    def hidden_answer():
+        assert page.get_by_test_id('canonical-answer').count()==0
+        assert page.get_by_test_id('answer-recipe').count()==0
+    def cancel_quit():
+        click('ゲームをやめる')
+        page.get_by_text('ゲームをやめますか？',exact=True).wait_for()
+        click('ゲームを続ける')
+    # Discard a session at intro, then verify a new game starts fresh.
+    setup(); cancel_quit()
+    page.get_by_role('button',name='はじめる',exact=True).wait_for()
+    click('ゲームをやめる'); click('タイトルへ戻る')
     def intro():
+        hidden_answer()
         assert page.get_by_test_id('card-C70').count()==0
         click('はじめる'); empty_board()
     def saved(next_label):
         page.get_by_role('heading',name='回答しました',exact=True).or_(page.get_by_role('heading',name='回答を保存しました',exact=True)).wait_for()
         assert page.get_by_test_id('current-color').count()==0
         assert page.get_by_test_id('stack-order').count()==0
+        hidden_answer()
+        cancel_quit()
         body=page.locator('body').inner_text()
         assert '%' not in body and 'C70' not in body and 'Y70' not in body
         click(next_label)
     setup()
     intro()
+    drag('C70'); cancel_quit()
+    assert 'C70' in page.get_by_test_id('stack-order').inner_text()
+    click('リセット')
     for card in ['C70','C50','M70','M50','Y70','Y50','K25']:
         drag(card)
     assert 'C70 → C50 → M70 → M50 → Y70 → Y50 → K25' in page.get_by_test_id('stack-order').inner_text()
@@ -70,6 +89,9 @@ with sync_playwright() as p:
         click('この色で回答する')
         saved('結果を見る')
         page.get_by_text('100.0%',exact=True).wait_for()
+        page.get_by_test_id('canonical-answer').wait_for()
+        assert page.get_by_test_id('answer-recipe').get_by_text(recipe[0],exact=True).count()==1
+        cancel_quit()
         assert page.get_by_test_id('card-C70').count()==0
         click('最終結果を見る' if i==2 else '次の問題へ')
         if i<2: intro()
@@ -78,7 +100,8 @@ with sync_playwright() as p:
     click('第2問 藤　詳細を見る')
     page.get_by_text('第2問の詳細',exact=True).wait_for()
     assert page.get_by_text('100.0%',exact=True).count()==1
-    assert 'M50' not in page.locator('body').inner_text()
+    assert 'M50' in page.get_by_test_id('answer-recipe').inner_text()
+    assert 'C50' in page.get_by_test_id('answer-recipe').inner_text()
     click('最終結果へ戻る')
     page.screenshot(path='/tmp/kasane-iro-phase4-final.png',full_page=True)
     click('もう一度遊ぶ'); intro()
@@ -89,6 +112,7 @@ with sync_playwright() as p:
             page.get_by_text(('飛鳥' if player==0 else 'プレイヤー2')+'さんに\nスマホを渡してください',exact=True).wait_for()
             assert page.get_by_test_id('current-color').count()==0
             assert page.get_by_test_id('stack-order').count()==0
+            hidden_answer(); cancel_quit()
             click('準備OK'); intro(); drag('C70'); click('この色で回答する')
             saved('次へ' if player==0 else '結果を見る')
         page.get_by_text(f'第{q+1}問の結果',exact=True).wait_for()
@@ -123,6 +147,8 @@ with sync_playwright() as p:
         page.get_by_text(f'第{q+1}問 / 10問',exact=True).wait_for(); intro()
         drag('C50'); click('この色で回答する'); saved('最終結果を見る' if q==9 else '次の問題へ')
     page.get_by_text('最終結果',exact=True).wait_for()
+    button_names=page.get_by_role('button').all_text_contents()
+    assert button_names.index('第10問 鼠　詳細を見る') < button_names.index('もう一度遊ぶ')
     assert not errors,errors
     print('PASS: how-to/stage, intro/saved boundaries, result details, solo, 2-player privacy/tie/replay, 10 questions, final-only, empty/nonempty timeout, card regressions, small viewports, no browser errors')
     browser.close()

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createSession, DEFAULT_SETTINGS, nextQuestion, ranking, ready, remainingSeconds, saveAnswer, startQuestion, continueAfterAnswer } from '../src/game/session';
+import { createSession, DEFAULT_SETTINGS, nextQuestion, ranking, ready, remainingSeconds, canRevealAnswer, saveAnswer, startQuestion, continueAfterAnswer } from '../src/game/session';
 import { GameSession } from '../src/types/game';
 
 function answer(session: GameSession, empty = false) {
@@ -145,4 +145,28 @@ test('ステージの問題ID順で出題し、設定・名前を維持して再
   assert.equal(replay.gameStatus, 'questionIntro');
   assert.throws(() => createSession(DEFAULT_SETTINGS, [], ['missing', 'koke', 'moegi']));
   assert.throws(() => createSession(DEFAULT_SETTINGS, [], ['moegi']));
+});
+
+test('正解と他人の回答は結果公開時のみ表示可能、finalでは終了まで非公開', () => {
+  for (const resultTiming of ['question', 'final'] as const) {
+    let s = createSession({ ...DEFAULT_SETTINGS, playerCount: 2, resultTiming }, []);
+    const firstId = s.currentQuestion.id;
+    while (s.gameStatus !== 'finished') {
+      assert.equal(canRevealAnswer(s, s.currentQuestion.id), false);
+      s = ready(s);
+      assert.equal(canRevealAnswer(s, s.currentQuestion.id), false);
+      s = startQuestion(s);
+      assert.equal(canRevealAnswer(s, s.currentQuestion.id), false);
+      s = answer(s);
+      assert.equal(canRevealAnswer(s, s.currentQuestion.id), false);
+      s = continueAfterAnswer(s);
+      if (s.gameStatus === 'questionResult') {
+        assert.equal(canRevealAnswer(s, s.currentQuestion.id), true);
+        assert.equal(canRevealAnswer({ ...s, answers: s.answers.slice(0, -1) }, s.currentQuestion.id), false);
+        s = nextQuestion(s);
+      }
+    }
+    assert.equal(canRevealAnswer(s, firstId), true);
+    assert.equal(canRevealAnswer(s, 'unknown'), false);
+  }
 });

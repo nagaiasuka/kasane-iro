@@ -11,6 +11,7 @@ import { FinalResultScreen } from './src/screens/FinalResultScreen';
 import { createSession, DEFAULT_SETTINGS, nextQuestion, ready, saveAnswer, startQuestion, continueAfterAnswer } from './src/game/session';
 import { GameSession, GameSettings, Stage } from './src/types/game';
 
+import { GameExit } from './src/components/GameExit';
 import { STAGES } from './src/data/stages';
 import { HowToPlayScreen } from './src/screens/HowToPlayScreen';
 import { StageSelectScreen } from './src/screens/StageSelectScreen';
@@ -24,6 +25,11 @@ export default function App() {
   const [detailIndex, setDetailIndex] = useState<number | null>(null);
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [session, setSession] = useState<GameSession | null>(null);
+  function exitGame() {
+    setSession(null);
+    setDetailIndex(null);
+    setScreen('title');
+  }
   function start(names: readonly string[]) {
     setSession(createSession(settings, names, stage.questionIds));
     setScreen('game');
@@ -45,15 +51,15 @@ export default function App() {
         onAnswer={(recipe, timedOut) => setSession(current => current && saveAnswer(current, player.id, session.currentQuestion.id, recipe, timedOut))} />;
       case 'questionResult': return <QuestionResultScreen session={session} onNext={() => setSession(current => current && nextQuestion(current))} />;
       case 'finished': return detailIndex !== null ? <ResultDetailScreen session={session} questionIndex={detailIndex} onBack={() => setDetailIndex(null)} /> : <FinalResultScreen onDetail={setDetailIndex} session={session} onReplay={() => setSession(createSession(session.settings, session.players.map(p => p.name), stage.questionIds))}
-        onTitle={() => { setSession(null); setDetailIndex(null); setScreen('title'); }} />;
+        onTitle={exitGame} />;
     }
   }
   return <SafeAreaProvider><StatusBar barStyle="dark-content" backgroundColor="#F7F4EC" />
     {screen === 'title' && <TitleScreen onStart={() => setScreen('stages')} onHowTo={() => setScreen('howTo')} />}
     {screen === 'howTo' && <HowToPlayScreen onBack={() => setScreen('title')} />}
     {screen === 'stages' && <StageSelectScreen onSelect={selected => { setStage(selected); setScreen('settings'); }} onBack={() => setScreen('title')} />}
-    {screen === 'settings' && <GameSettingsScreen stageName={stage.name} settings={settings} onChange={setSettings} onNext={() => setScreen('players')} />}
+    {screen === 'settings' && <GameSettingsScreen onBack={() => setScreen('stages')} stageName={stage.name} settings={settings} onChange={setSettings} onNext={() => setScreen('players')} />}
     {screen === 'players' && <PlayerSetupScreen count={settings.playerCount} onStart={start} onBack={() => setScreen('settings')} />}
-    {screen === 'game' && game()}
+    {screen === 'game' && <GameExit enabled={session?.gameStatus !== 'finished'} onExit={exitGame}>{game()}</GameExit>}
   </SafeAreaProvider>;
 }

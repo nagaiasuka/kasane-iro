@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { QuitButton } from '../components/GameExit';
 import { ColorCard } from '../components/ColorCard';
 import { PlayField } from '../components/PlayField';
 import { CARD_IDS } from '../game/cards';
@@ -70,7 +71,7 @@ export function PlayScreen({ question, playerName, questionNumber, questionCount
       <View style={styles.screen}>
         <View style={[styles.header, compact && { marginBottom: 8 }]}>
           <View style={{ flex: 1 }}><Text style={styles.title}>第{questionNumber}問 / {questionCount}問</Text><Text numberOfLines={1} style={styles.subtitle}>{playerName}さん</Text></View>
-          <View style={styles.badge}><Text style={styles.badgeText}>{remaining === null ? '時間無制限' : `残り ${remaining}秒`}</Text><Text style={styles.page}>ゲーム進行確認用データ</Text></View>
+          <View style={styles.badge}><Text style={styles.badgeText}>{remaining === null ? '時間無制限' : `残り ${remaining}秒`}</Text></View><QuitButton />
         </View>
 
         <View style={[styles.challenge, compact && { paddingVertical: 8 }]}>
