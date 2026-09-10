@@ -2,6 +2,11 @@ import { CardDefinition, CardId } from '../types/game';
 
 export const CARD_IDS: readonly CardId[] = ['C70', 'C50', 'M70', 'M50', 'Y70', 'Y50', 'K25'];
 
+export const CARD_LABELS: Readonly<Record<CardId, string>> = {
+  C70: '青・濃', C50: '青・淡', M70: '赤・濃', M50: '赤・淡',
+  Y70: '黄・濃', Y50: '黄・淡', K25: '黒',
+};
+
 // 仮の表示用キャリブレーション。印刷濃度とalphaは別物。
 // 実物を白背景で測定後、colorとopacityをここで調整する。
 export const CARDS: Readonly<Record<CardId, CardDefinition>> = {

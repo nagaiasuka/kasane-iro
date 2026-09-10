@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, Text } from 'react-native';
 import { cardStyle } from '../game/colorEngine';
+import { CARD_LABELS } from '../game/cards';
 import { Point } from '../game/stack';
 import { CardId } from '../types/game';
 
 type Props = {
   id: CardId; position: Point; width: number; height: number; zIndex: number;
   placed: boolean; locked: boolean;
+  testID?: string;
   onStart: (id: CardId) => void;
   onDrop: (id: CardId, center: Point | null) => void;
 };
@@ -55,16 +57,16 @@ export function ColorCard(props: Props) {
   return (
     <Animated.View
       {...responder.panHandlers}
-      testID={`card-${props.id}`}
-      accessible accessibilityLabel={`${props.id}、${props.placed ? '場' : '手札'}のカード`}
-      accessibilityHint="中央へドラッグして重ね、下へドラッグして戻します"
+      testID={props.testID ?? `card-${props.id}`}
+      accessible accessibilityLabel={`${CARD_LABELS[props.id]}、${props.placed ? '場' : '手札'}のカード`}
+      accessibilityHint={props.locked ? undefined : '中央へドラッグして重ね、下へドラッグして戻します'}
       style={[styles.card, {
         width: props.width, height: props.height, backgroundColor: cardStyle(props.id),
         zIndex: props.zIndex, transform: xy.getTranslateTransform(),
         borderColor: dragging ? '#314940' : 'rgba(38, 56, 48, 0.24)',
       }]}
     >
-      <Text style={styles.label}>{props.id}</Text>
+      <Text style={styles.label}>{CARD_LABELS[props.id]}</Text>
       {!props.placed && <Text style={styles.mark}>かさねいろ</Text>}
     </Animated.View>
   );

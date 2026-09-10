@@ -8,6 +8,7 @@ with sync_playwright() as p:
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.goto(os.environ.get('KASANE_WEB_URL', 'http://localhost:8087'), wait_until='networkidle')
+    labels = {'C70':'青・濃', 'C50':'青・淡', 'M70':'赤・濃', 'M50':'赤・淡', 'Y70':'黄・濃', 'Y50':'黄・淡', 'K25':'黒'}
     def click(name): page.get_by_role('button', name=name, exact=True).click()
     def drag(card, destination='play-field', top=False):
         page.wait_for_timeout(700)
@@ -69,14 +70,14 @@ with sync_playwright() as p:
     setup()
     intro()
     drag('C70'); cancel_quit()
-    assert 'C70' in page.get_by_test_id('stack-order').inner_text()
+    assert '青・濃' in page.get_by_test_id('stack-order').inner_text()
     click('リセット')
     for card in ['C70','C50','M70','M50','Y70','Y50','K25']:
         drag(card)
-    assert 'C70 → C50 → M70 → M50 → Y70 → Y50 → K25' in page.get_by_test_id('stack-order').inner_text()
+    assert '青・濃 → 青・淡 → 赤・濃 → 赤・淡 → 黄・濃 → 黄・淡 → 黒' in page.get_by_test_id('stack-order').inner_text()
     drag('M50','hand-area',True)
     drag('C70','hand-area',True)
-    assert 'C50 → M70 → Y70 → Y50 → K25' in page.get_by_test_id('stack-order').inner_text()
+    assert '青・淡 → 赤・濃 → 黄・濃 → 黄・淡 → 黒' in page.get_by_test_id('stack-order').inner_text()
     click('リセット'); empty_board()
     for width,height in [(320,568),(375,667),(412,915)]:
         page.set_viewport_size({'width':width,'height':height}); page.wait_for_timeout(600)
@@ -88,9 +89,9 @@ with sync_playwright() as p:
         for card in recipe: drag(card)
         click('この色で回答する')
         saved('結果を見る')
-        page.get_by_text('100.0%',exact=True).wait_for()
+        page.get_by_text('再現率 100.0%',exact=True).first.wait_for()
         page.get_by_test_id('canonical-answer').wait_for()
-        assert page.get_by_test_id('answer-recipe').get_by_text(recipe[0],exact=True).count()==1
+        assert page.get_by_test_id('answer-recipe').get_by_text(labels[recipe[0]],exact=True).count()==1
         cancel_quit()
         assert page.get_by_test_id('card-C70').count()==0
         click('最終結果を見る' if i==2 else '次の問題へ')
@@ -99,9 +100,9 @@ with sync_playwright() as p:
     assert page.get_by_text('100.0%',exact=True).count()==1
     click('第2問 藤　詳細を見る')
     page.get_by_text('第2問の詳細',exact=True).wait_for()
-    assert page.get_by_text('100.0%',exact=True).count()==1
-    assert 'M50' in page.get_by_test_id('answer-recipe').inner_text()
-    assert 'C50' in page.get_by_test_id('answer-recipe').inner_text()
+    assert page.get_by_text('再現率 100.0%',exact=True).count()==2
+    assert '赤・淡' in page.get_by_test_id('answer-recipe').inner_text()
+    assert '青・淡' in page.get_by_test_id('answer-recipe').inner_text()
     click('最終結果へ戻る')
     page.screenshot(path='/tmp/kasane-iro-phase4-final.png',full_page=True)
     click('もう一度遊ぶ'); intro()
@@ -138,7 +139,7 @@ with sync_playwright() as p:
     for q,name in enumerate(['萌黄','藤','紅梅']):
         click(f'第{q+1}問 {name}　詳細を見る')
         assert page.get_by_text('時間切れ',exact=False).count()==1
-        if q!=1: assert page.get_by_text('0.0% ・ 空回答 ・ 時間切れ',exact=True).count()==1
+        if q!=1: assert page.get_by_text('空回答 ・ 時間切れ',exact=True).count()==1
         click('最終結果へ戻る')
     click('タイトルへ戻る')
     page.get_by_role('button',name='ゲームをはじめる').wait_for()

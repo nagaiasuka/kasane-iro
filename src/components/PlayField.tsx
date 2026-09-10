@@ -2,14 +2,14 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Rect } from '../game/stack';
 
-export function PlayField({ rect, count, active }: { rect: Rect; count: number; active: boolean }) {
+export function PlayField({ rect, count, active, emptyMessage }: { rect: Rect; count: number; active: boolean; emptyMessage?: string }) {
   return (
     <View testID="play-field" pointerEvents="none" style={[styles.field, {
       left: rect.x, top: rect.y, width: rect.width, height: rect.height,
       borderColor: active ? '#688B75' : '#D6DCD2',
     }]}>
       <Text style={styles.heading}>色をかさねる場所</Text>
-      {count === 0 && <View style={styles.empty}><Text style={styles.plus}>＋</Text><Text style={styles.hint}>手札から、ここへ</Text></View>}
+      {count === 0 && <View style={styles.empty}>{!emptyMessage && <Text style={styles.plus}>＋</Text>}<Text style={styles.hint}>{emptyMessage ?? '手札から、ここへ'}</Text></View>}
       <Text style={styles.count}>{count} / 7 枚</Text>
     </View>
   );

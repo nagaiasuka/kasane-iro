@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { QuitButton } from '../components/GameExit';
 import { ColorCard } from '../components/ColorCard';
 import { PlayField } from '../components/PlayField';
-import { CARD_IDS } from '../game/cards';
+import { CARD_IDS, CARD_LABELS } from '../game/cards';
 import { generateColor, rgbStyle } from '../game/colorEngine';
 import { remainingSeconds } from '../game/session';
 import { contains, moveCard, Point, Rect } from '../game/stack';
@@ -102,7 +102,7 @@ export function PlayScreen({ question, playerName, questionNumber, questionCount
           </>}
         </View>
 
-        <Text testID="stack-order" style={styles.order} numberOfLines={1}>重ね順（下→上） {stack.length ? stack.join(' → ') : 'まだ重ねていません'}</Text>
+        <Text testID="stack-order" style={styles.order} numberOfLines={1}>重ね順（下→上） {stack.length ? stack.map(id => CARD_LABELS[id]).join(' → ') : 'まだ重ねていません'}</Text>
         <View style={styles.actions}>
           <Pressable accessibilityRole="button" disabled={active !== null} onPress={() => { if (deadline.current !== null && Date.now() >= deadline.current) { submit(true); return; } if (!submitted.current) updateStack([]); }} style={({ pressed }) => [styles.reset, pressed && styles.pressed, active !== null && styles.disabled]}><Text style={styles.resetText}>リセット</Text></Pressable>
           <Pressable accessibilityRole="button" disabled={!stack.length || active !== null} onPress={() => submit(deadline.current !== null && Date.now() >= deadline.current)} style={({ pressed }) => [styles.submit, pressed && styles.pressed, (!stack.length || active !== null) && styles.disabled]}><Text style={styles.submitText}>この色で回答する</Text></Pressable>
