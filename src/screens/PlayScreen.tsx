@@ -1,20 +1,52 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AppState, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ColorCard } from '../components/ColorCard';
 import { PlayField } from '../components/PlayField';
-import { QUESTION } from '../data/questions';
 import { CARD_IDS } from '../game/cards';
 import { generateColor, rgbStyle } from '../game/colorEngine';
-import { scoreAnswer } from '../game/scoring';
+import { remainingSeconds } from '../game/session';
 import { contains, moveCard, Point, Rect } from '../game/stack';
-import { Answer, CardId } from '../types/game';
+import { CardId, Question } from '../types/game';
 
-export function PlayScreen() {
+type Props = { question: Question; playerName: string; questionNumber: number; questionCount: number;
+  timeLimit: number | null; onAnswer: (recipe: readonly CardId[], timedOut: boolean) => void };
+
+export function PlayScreen({ question, playerName, questionNumber, questionCount, timeLimit, onAnswer }: Props) {
   const compact = useWindowDimensions().height < 740;
   const [stack, setStack] = useState<CardId[]>([]);
   const [active, setActive] = useState<CardId | null>(null);
-  const [answer, setAnswer] = useState<Answer | null>(null);
+  const submitted = useRef(false);
+  const stackRef = useRef(stack);
+  const callback = useRef(onAnswer);
+  callback.current = onAnswer;
+  const deadline = useRef(timeLimit === null ? null : Date.now() + timeLimit * 1000);
+  const [remaining, setRemaining] = useState(timeLimit);
+
+  function updateStack(next: CardId[]) {
+    stackRef.current = next;
+    setStack(next);
+  }
+  function submit(timedOut: boolean) {
+    if (submitted.current) return;
+    submitted.current = true;
+    const snapshot = [...stackRef.current];
+    updateStack([]);
+    setActive(null);
+    callback.current(snapshot, timedOut);
+  }
+  useEffect(() => {
+    if (deadline.current === null) return;
+    const tick = () => {
+      const seconds = remainingSeconds(deadline.current!, Date.now());
+      setRemaining(seconds);
+      if (seconds === 0) submit(true);
+    };
+    tick();
+    const interval = setInterval(tick, 200);
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') tick(); });
+    return () => { clearInterval(interval); subscription.remove(); };
+  }, []);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const handHeight = Math.min(178, size.height * 0.43);
   const field: Rect = { x: 12, y: 4, width: Math.max(0, size.width - 24), height: Math.max(0, size.height - handHeight - 16) };
@@ -26,9 +58,10 @@ export function PlayScreen() {
   const stackHeight = Math.max(48, field.height - 60 - 6 * step);
 
   function drop(id: CardId, center: Point | null) {
+    if (submitted.current) return;
+    if (deadline.current !== null && Date.now() >= deadline.current) { submit(true); return; }
     const destination = center && contains(hand, center) ? 'hand' : center && contains(field, center) ? 'field' : null;
-    setStack(current => moveCard(current, id, destination));
-    if (destination) setAnswer(null);
+    updateStack(moveCard(stackRef.current, id, destination));
     setActive(null);
   }
 
@@ -36,18 +69,18 @@ export function PlayScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.screen}>
         <View style={[styles.header, compact && { marginBottom: 8 }]}>
-          <View><Text style={styles.title}>かさねいろ</Text><Text style={styles.subtitle}>かさねて、見つける、色あそび。</Text></View>
-          <View style={styles.badge}><Text style={styles.badgeText}>日本の伝統色</Text><Text style={styles.page}>試作 · 01</Text></View>
+          <View style={{ flex: 1 }}><Text style={styles.title}>第{questionNumber}問 / {questionCount}問</Text><Text numberOfLines={1} style={styles.subtitle}>{playerName}さん</Text></View>
+          <View style={styles.badge}><Text style={styles.badgeText}>{remaining === null ? '時間無制限' : `残り ${remaining}秒`}</Text><Text style={styles.page}>ゲーム進行確認用データ</Text></View>
         </View>
 
         <View style={[styles.challenge, compact && { paddingVertical: 8 }]}>
-          <View style={styles.targetInfo}><Text style={styles.eyebrow}>お題の色</Text><Text style={styles.colorName}>{QUESTION.name}<Text style={styles.reading}>  {QUESTION.reading}</Text></Text><Text style={styles.note}>この色に、近づけよう。</Text></View>
-          <View style={styles.sampleColumn}><View testID="target-color" style={[styles.swatch, { backgroundColor: rgbStyle(generateColor(QUESTION.recipe)) }]} /><Text style={styles.sampleLabel}>お題</Text></View>
+          <View style={styles.targetInfo}><Text style={styles.eyebrow}>お題の色</Text><Text style={styles.colorName}>{question.name}<Text style={styles.reading}>  {question.reading}</Text></Text><Text style={styles.note}>この色に、近づけよう。</Text></View>
+          <View style={styles.sampleColumn}><View testID="target-color" style={[styles.swatch, { backgroundColor: rgbStyle(generateColor(question.recipe)) }]} /><Text style={styles.sampleLabel}>お題</Text></View>
           <View style={styles.sampleColumn}><View testID="current-color" style={[styles.swatch, { backgroundColor: rgbStyle(generateColor(stack)) }]} /><Text style={styles.sampleLabel}>いまの色</Text></View>
         </View>
 
         <View style={[styles.status, compact && { height: 32 }]} accessibilityLiveRegion="polite">
-          {answer ? <Text testID="score" style={styles.result}>再現率 <Text style={styles.score}>{answer.score.toFixed(1)}%</Text>{answer.score === 100 ? '  ぴったり！' : '  もう一度、かさねてみよう'}</Text> : <Text style={styles.instruction}>カードを中央へ。戻すときは手札へ。</Text>}
+          <Text style={styles.instruction}>カードを中央へ。戻すときは手札へ。</Text>
         </View>
 
         <View style={styles.board} onLayout={event => setSize(event.nativeEvent.layout)}>
@@ -70,8 +103,8 @@ export function PlayScreen() {
 
         <Text testID="stack-order" style={styles.order} numberOfLines={1}>重ね順（下→上） {stack.length ? stack.join(' → ') : 'まだ重ねていません'}</Text>
         <View style={styles.actions}>
-          <Pressable accessibilityRole="button" disabled={active !== null} onPress={() => { setStack([]); setAnswer(null); }} style={({ pressed }) => [styles.reset, pressed && styles.pressed, active !== null && styles.disabled]}><Text style={styles.resetText}>リセット</Text></Pressable>
-          <Pressable accessibilityRole="button" disabled={!stack.length || active !== null} onPress={() => setAnswer(scoreAnswer(stack, QUESTION.recipe))} style={({ pressed }) => [styles.submit, pressed && styles.pressed, (!stack.length || active !== null) && styles.disabled]}><Text style={styles.submitText}>この色で回答する</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={active !== null} onPress={() => { if (deadline.current !== null && Date.now() >= deadline.current) { submit(true); return; } if (!submitted.current) updateStack([]); }} style={({ pressed }) => [styles.reset, pressed && styles.pressed, active !== null && styles.disabled]}><Text style={styles.resetText}>リセット</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={!stack.length || active !== null} onPress={() => submit(deadline.current !== null && Date.now() >= deadline.current)} style={({ pressed }) => [styles.submit, pressed && styles.pressed, (!stack.length || active !== null) && styles.disabled]}><Text style={styles.submitText}>この色で回答する</Text></Pressable>
         </View>
       </View>
     </SafeAreaView>
@@ -82,7 +115,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F7F4EC' },
   screen: { flex: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10, maxWidth: 520, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-  title: { fontSize: 27, letterSpacing: 4, fontWeight: '600', color: '#2C483C' },
+  title: { fontSize: 22, letterSpacing: 1, fontWeight: '600', color: '#2C483C' },
   subtitle: { fontSize: 10, color: '#858879', marginTop: 5, letterSpacing: 1 },
   badge: { alignItems: 'flex-end', gap: 5 },
   badgeText: { fontSize: 10, color: '#546854', letterSpacing: 1 },
