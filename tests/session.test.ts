@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createSession, DEFAULT_SETTINGS, nextQuestion, ranking, ready, remainingSeconds, saveAnswer } from '../src/game/session';
+import { createSession, DEFAULT_SETTINGS, nextQuestion, ranking, ready, remainingSeconds, saveAnswer, startQuestion, continueAfterAnswer } from '../src/game/session';
 import { GameSession } from '../src/types/game';
 
 function answer(session: GameSession, empty = false) {
@@ -16,12 +16,12 @@ test('人数1〜4・問題数3/5/10・デフォルト名・1人は受け渡し�
     if (playerCount > 1) assert.equal(s.players[1].name, 'プレイヤー2');
     assert.equal(s.questions.length, questionCount);
     assert.equal(new Set(s.questions.map(q => q.id)).size, questionCount);
-    assert.equal(s.gameStatus, playerCount === 1 ? 'playing' : 'handoff');
+    assert.equal(s.gameStatus, playerCount === 1 ? 'questionIntro' : 'handoff');
   }
 });
 
 test('回答保存はスナップショット、二重回答・別プレイヤー・別問題を拒否', () => {
-  const s = createSession(DEFAULT_SETTINGS, []);
+  const s = startQuestion(createSession(DEFAULT_SETTINGS, []));
   const recipe = [...s.currentQuestion.recipe];
   const saved = saveAnswer(s, s.players[0].id, s.currentQuestion.id, recipe);
   recipe.pop();
@@ -30,19 +30,19 @@ test('回答保存はスナップショット、二重回答・別プレイヤ�
   assert.equal(answer(saved), saved);
   assert.equal(saveAnswer(s, 'unknown', s.currentQuestion.id, []), s);
   assert.equal(saveAnswer(s, s.players[0].id, 'unknown', []), s);
-  const next = nextQuestion(saved);
+  const next = startQuestion(nextQuestion(continueAfterAnswer(saved)));
   assert.equal(saveAnswer(next, s.players[0].id, s.currentQuestion.id, []), next);
 });
 
 test('同じ問題の次プレイヤーを経て全員回答後のみ問題結果', () => {
   let s = createSession({ ...DEFAULT_SETTINGS, playerCount: 2 }, []);
   assert.equal(answer(s), s);
-  s = answer(ready(s));
+  s = continueAfterAnswer(answer(startQuestion(ready(s))));
   assert.equal(s.gameStatus, 'handoff');
   assert.equal(s.currentPlayerIndex, 1);
   assert.equal(s.currentQuestionIndex, 0);
-  assert.equal(saveAnswer(ready(s), s.players[0].id, s.currentQuestion.id, [] ).answers.length, 1);
-  s = answer(ready(s));
+  assert.equal(saveAnswer(startQuestion(ready(s)), s.players[0].id, s.currentQuestion.id, [] ).answers.length, 1);
+  s = continueAfterAnswer(answer(startQuestion(ready(s))));
   assert.equal(s.gameStatus, 'questionResult');
   s = nextQuestion(s);
   assert.equal(s.currentQuestionIndex, 1);
@@ -57,11 +57,20 @@ test('全設定の組合せで全問完了・resultTimingによる遷移差・�
       let s = createSession({ ...DEFAULT_SETTINGS, playerCount, questionCount, resultTiming }, []);
       for (let q = 0; q < questionCount; q++) {
         for (let p = 0; p < playerCount; p++) {
-          assert.equal(s.gameStatus, playerCount === 1 ? 'playing' : 'handoff');
+          assert.equal(s.gameStatus, playerCount === 1 ? 'questionIntro' : 'handoff');
           s = ready(s);
+          assert.equal(s.gameStatus, 'questionIntro');
+          assert.equal(answer(s), s);
+          s = startQuestion(s);
+          assert.equal(s.gameStatus, 'playing');
           assert.equal(s.currentPlayerIndex, p);
           assert.equal(s.currentQuestionIndex, q);
           s = answer(s);
+          assert.equal(s.gameStatus, 'answerSaved');
+          assert.equal(s.currentPlayerIndex, p);
+          assert.equal(s.currentQuestionIndex, q);
+          assert.equal(answer(s), s);
+          s = continueAfterAnswer(s);
         }
         if (resultTiming === 'question') {
           assert.equal(s.gameStatus, 'questionResult');
@@ -81,7 +90,7 @@ test('全設定の組合せで全問完了・resultTimingによる遷移差・�
 });
 
 test('時間切れは現在のカードで採点し空回答は白・0%、残り時間は実時刻で算出', () => {
-  const s = createSession({ ...DEFAULT_SETTINGS, timeLimit: 15 }, []);
+  const s = startQuestion(createSession({ ...DEFAULT_SETTINGS, timeLimit: 15 }, []));
   const empty = answer(s, true).answers[0];
   assert.equal(empty.score, 0);
   assert.equal(empty.timedOut, true);
@@ -97,7 +106,7 @@ test('時間切れは現在のカードで採点し空回答は白・0%、残り
 
 test('平均は全問題を分母に算出・降順ランキング・同点1/1/3位', () => {
   let s = createSession({ ...DEFAULT_SETTINGS, playerCount: 3, resultTiming: 'final' }, []);
-  while (s.gameStatus !== 'finished') s = answer(ready(s), s.currentPlayerIndex === 2 && s.currentQuestionIndex !== 0);
+  while (s.gameStatus !== 'finished') s = continueAfterAnswer(answer(startQuestion(ready(s)), s.currentPlayerIndex === 2 && s.currentQuestionIndex !== 0));
   const result = ranking(s);
   assert.deepEqual(result.map(r => r.rank), [1, 1, 3]);
   assert.deepEqual(result.map(r => r.average), [100, 100, 100 / 3]);
@@ -105,4 +114,35 @@ test('平均は全問題を分母に算出・降順ランキング・同点1/1/3
   const inverted = { ...s, answers: s.answers.map(a => ({ ...a, score: a.playerId === 'player-3' ? 99 : 25 })) };
   assert.deepEqual(ranking(inverted).map(r => r.player.id), ['player-3', 'player-1', 'player-2']);
   assert.deepEqual(ranking(inverted).map(r => r.rank), [1, 2, 2]);
+});
+
+
+test('問題開始・回答完了の区切りを維持し無効な次へ操作を拒否', () => {
+  const intro = createSession(DEFAULT_SETTINGS, []);
+  assert.equal(intro.gameStatus, 'questionIntro');
+  assert.equal(ready(intro), intro);
+  assert.equal(nextQuestion(intro), intro);
+  assert.equal(continueAfterAnswer(intro), intro);
+  const playing = startQuestion(intro);
+  assert.equal(startQuestion(playing), playing);
+  assert.equal(continueAfterAnswer(playing), playing);
+  const saved = answer(playing);
+  assert.equal(saved.gameStatus, 'answerSaved');
+  assert.equal(saved.answers.length, 1);
+  assert.equal(startQuestion(saved), saved);
+  assert.equal(nextQuestion(saved), saved);
+  const result = continueAfterAnswer(saved);
+  assert.equal(result.gameStatus, 'questionResult');
+  assert.equal(continueAfterAnswer(result), result);
+});
+
+test('ステージの問題ID順で出題し、設定・名前を維持して再プレイ', () => {
+  const ids = ['mizu', 'koke', 'moegi'];
+  const s = createSession(DEFAULT_SETTINGS, ['飛鳥'], ids);
+  assert.deepEqual(s.questions.map(q => q.id), ids);
+  const replay = createSession(s.settings, s.players.map(p => p.name), ids);
+  assert.deepEqual(replay.questions, s.questions);
+  assert.equal(replay.gameStatus, 'questionIntro');
+  assert.throws(() => createSession(DEFAULT_SETTINGS, [], ['missing', 'koke', 'moegi']));
+  assert.throws(() => createSession(DEFAULT_SETTINGS, [], ['moegi']));
 });

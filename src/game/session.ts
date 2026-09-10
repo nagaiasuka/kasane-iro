@@ -6,25 +6,29 @@ export const DEFAULT_SETTINGS: GameSettings = {
   playerCount: 1, questionCount: 3, timeLimit: null, resultTiming: 'question',
 };
 
-export function createSession(settings: GameSettings, names: readonly string[]): GameSession {
-  const questions = selectQuestions(settings.questionCount);
+export function createSession(settings: GameSettings, names: readonly string[], questionIds?: readonly string[]): GameSession {
+  const questions = selectQuestions(settings.questionCount, questionIds);
   return {
     settings: { ...settings },
     players: Array.from({ length: settings.playerCount }, (_, i) => ({ id: `player-${i + 1}`, name: names[i]?.trim() || `プレイヤー${i + 1}` })),
     questions, currentQuestion: questions[0], currentQuestionIndex: 0, currentPlayerIndex: 0,
-    answers: [], gameStatus: settings.playerCount === 1 ? 'playing' : 'handoff',
+    answers: [], gameStatus: settings.playerCount === 1 ? 'questionIntro' : 'handoff',
   };
 }
 
 export function ready(session: GameSession): GameSession {
-  return session.gameStatus === 'handoff' ? { ...session, gameStatus: 'playing' } : session;
+  return session.gameStatus === 'handoff' ? { ...session, gameStatus: 'questionIntro' } : session;
+}
+
+export function startQuestion(session: GameSession): GameSession {
+  return session.gameStatus === 'questionIntro' ? { ...session, gameStatus: 'playing' } : session;
 }
 
 function advanceQuestion(session: GameSession): GameSession {
   const index = session.currentQuestionIndex + 1;
   if (index === session.questions.length) return { ...session, gameStatus: 'finished' };
   return { ...session, currentQuestionIndex: index, currentQuestion: session.questions[index],
-    currentPlayerIndex: 0, gameStatus: session.players.length === 1 ? 'playing' : 'handoff' };
+    currentPlayerIndex: 0, gameStatus: session.players.length === 1 ? 'questionIntro' : 'handoff' };
 }
 
 export function nextQuestion(session: GameSession): GameSession {
@@ -35,13 +39,17 @@ export function saveAnswer(session: GameSession, playerId: string, questionId: s
   if (session.gameStatus !== 'playing' || session.players[session.currentPlayerIndex].id !== playerId ||
       session.currentQuestion.id !== questionId || session.answers.some(a => a.playerId === playerId && a.questionId === questionId)) return session;
   const scored = scoreAnswer(recipe, session.currentQuestion.recipe);
-  const answered: GameSession = { ...session, answers: [...session.answers,
+  return { ...session, gameStatus: 'answerSaved', answers: [...session.answers,
     { ...scored, score: recipe.length ? scored.score : 0, playerId, questionId, timedOut }] };
+}
+
+export function continueAfterAnswer(session: GameSession): GameSession {
+  if (session.gameStatus !== 'answerSaved') return session;
   if (session.currentPlayerIndex + 1 < session.players.length) {
-    return { ...answered, currentPlayerIndex: session.currentPlayerIndex + 1, gameStatus: 'handoff' };
+    return { ...session, currentPlayerIndex: session.currentPlayerIndex + 1, gameStatus: 'handoff' };
   }
   return session.settings.resultTiming === 'question'
-    ? { ...answered, gameStatus: 'questionResult' } : advanceQuestion(answered);
+    ? { ...session, gameStatus: 'questionResult' } : advanceQuestion(session);
 }
 
 export function ranking(session: GameSession) {

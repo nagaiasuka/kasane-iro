@@ -1,4 +1,5 @@
 # Optional browser regression check: run Expo on port 8087; requires Python Playwright + Chromium.
+import os
 from playwright.sync_api import sync_playwright
 
 with sync_playwright() as p:
@@ -6,7 +7,7 @@ with sync_playwright() as p:
     page = browser.new_page(viewport={"width": 390, "height": 844})
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
-    page.goto('http://localhost:8087', wait_until='networkidle')
+    page.goto(os.environ.get('KASANE_WEB_URL', 'http://localhost:8087'), wait_until='networkidle')
     def click(name): page.get_by_role('button', name=name, exact=True).click()
     def drag(card, destination='play-field', top=False):
         page.wait_for_timeout(700)
@@ -23,6 +24,8 @@ with sync_playwright() as p:
         assert 'まだ重ねていません' in page.get_by_test_id('stack-order').inner_text()
     def setup(players=1, final=False, timer=False, ten=False):
         click('ゲームをはじめる')
+        click('日本の伝統色を選ぶ')
+        page.get_by_text('日本の伝統色', exact=True).wait_for()
         page.get_by_role('radio',name=f'{players}人',exact=True).click()
         if final: page.get_by_role('radio',name='最後にまとめて表示',exact=True).click()
         if timer: page.get_by_role('radio',name='15秒',exact=True).click()
@@ -32,8 +35,23 @@ with sync_playwright() as p:
         page.get_by_role('textbox').first.fill('飛鳥')
         if players>1: page.get_by_role('textbox').nth(1).fill(' ')
         click('ゲームをはじめる')
+    click('遊び方')
+    for heading in ['1　お題の色を見よう', '2　カードを重ねよう', '3　重ねる順番も大切', '4　お題に近づけて回答']:
+        assert page.get_by_text(heading,exact=True).count()==1
+    page.screenshot(path='/tmp/kasane-iro-phase4-howto.png',full_page=True)
+    click('わかった')
+    def intro():
+        assert page.get_by_test_id('card-C70').count()==0
+        click('はじめる'); empty_board()
+    def saved(next_label):
+        page.get_by_role('heading',name='回答しました',exact=True).or_(page.get_by_role('heading',name='回答を保存しました',exact=True)).wait_for()
+        assert page.get_by_test_id('current-color').count()==0
+        assert page.get_by_test_id('stack-order').count()==0
+        body=page.locator('body').inner_text()
+        assert '%' not in body and 'C70' not in body and 'Y70' not in body
+        click(next_label)
     setup()
-    empty_board()
+    intro()
     for card in ['C70','C50','M70','M50','Y70','Y50','K25']:
         drag(card)
     assert 'C70 → C50 → M70 → M50 → Y70 → Y50 → K25' in page.get_by_test_id('stack-order').inner_text()
@@ -50,13 +68,20 @@ with sync_playwright() as p:
         empty_board()
         for card in recipe: drag(card)
         click('この色で回答する')
+        saved('結果を見る')
         page.get_by_text('100.0%',exact=True).wait_for()
         assert page.get_by_test_id('card-C70').count()==0
         click('最終結果を見る' if i==2 else '次の問題へ')
+        if i<2: intro()
     page.get_by_text('最終結果',exact=True).wait_for()
-    assert page.get_by_text('100.0%',exact=True).count()==4
-    page.screenshot(path='/tmp/kasane-iro-phase3-final.png',full_page=True)
-    click('もう一度遊ぶ'); empty_board()
+    assert page.get_by_text('100.0%',exact=True).count()==1
+    click('第2問 藤　詳細を見る')
+    page.get_by_text('第2問の詳細',exact=True).wait_for()
+    assert page.get_by_text('100.0%',exact=True).count()==1
+    assert 'M50' not in page.locator('body').inner_text()
+    click('最終結果へ戻る')
+    page.screenshot(path='/tmp/kasane-iro-phase4-final.png',full_page=True)
+    click('もう一度遊ぶ'); intro()
     page.reload(wait_until='networkidle')
     setup(2)
     for q in range(3):
@@ -64,31 +89,40 @@ with sync_playwright() as p:
             page.get_by_text(('飛鳥' if player==0 else 'プレイヤー2')+'さんに\nスマホを渡してください',exact=True).wait_for()
             assert page.get_by_test_id('current-color').count()==0
             assert page.get_by_test_id('stack-order').count()==0
-            click('準備OK'); empty_board(); drag('C70'); click('この色で回答する')
+            click('準備OK'); intro(); drag('C70'); click('この色で回答する')
+            saved('次へ' if player==0 else '結果を見る')
         page.get_by_text(f'第{q+1}問の結果',exact=True).wait_for()
         click('最終結果を見る' if q==2 else '次の問題へ')
     page.get_by_text('1位　飛鳥',exact=True).wait_for()
     page.get_by_text('1位　プレイヤー2',exact=True).wait_for()
-    click('もう一度遊ぶ'); click('準備OK'); empty_board()
+    click('もう一度遊ぶ'); click('準備OK'); intro()
     page.reload(wait_until='networkidle')
     setup(final=True,timer=True)
-    empty_board()
+    # Intro must remain untimed, even beyond the configured 15 seconds.
     page.wait_for_timeout(16000)
-    page.get_by_text('第2問 / 3問',exact=True).wait_for(); empty_board()
-    drag('M50')
-    page.wait_for_timeout(15000)
-    page.get_by_text('第3問 / 3問',exact=True).wait_for(); empty_board()
-    page.wait_for_timeout(16000)
+    assert page.get_by_role('button',name='はじめる',exact=True).count()==1
+    assert page.get_by_text('残り',exact=False).count()==0
+    for q in range(3):
+        intro()
+        page.get_by_text('残り 15秒',exact=True).wait_for()
+        if q==1: drag('M50')
+        page.wait_for_timeout(16000)
+        # Saved is also an explicit boundary; it never advances automatically.
+        page.wait_for_timeout(1000)
+        saved('最終結果を見る' if q==2 else '次の問題へ')
     page.get_by_text('最終結果',exact=True).wait_for()
-    assert page.get_by_text('0.0% ・ 空回答 ・ 時間切れ',exact=True).count()==2
-    assert page.get_by_text('時間切れ',exact=False).count()==3
+    for q,name in enumerate(['萌黄','藤','紅梅']):
+        click(f'第{q+1}問 {name}　詳細を見る')
+        assert page.get_by_text('時間切れ',exact=False).count()==1
+        if q!=1: assert page.get_by_text('0.0% ・ 空回答 ・ 時間切れ',exact=True).count()==1
+        click('最終結果へ戻る')
     click('タイトルへ戻る')
     page.get_by_role('button',name='ゲームをはじめる').wait_for()
     page.reload(wait_until='networkidle'); setup(final=True,ten=True)
     for q in range(10):
-        page.get_by_text(f'第{q+1}問 / 10問',exact=True).wait_for(); empty_board()
-        drag('C50'); click('この色で回答する')
+        page.get_by_text(f'第{q+1}問 / 10問',exact=True).wait_for(); intro()
+        drag('C50'); click('この色で回答する'); saved('最終結果を見る' if q==9 else '次の問題へ')
     page.get_by_text('最終結果',exact=True).wait_for()
     assert not errors,errors
-    print('PASS: solo, 2-player privacy/tie/replay, 10 questions, final-only, empty/nonempty timeout, card regressions, small viewports, no browser errors')
+    print('PASS: how-to/stage, intro/saved boundaries, result details, solo, 2-player privacy/tie/replay, 10 questions, final-only, empty/nonempty timeout, card regressions, small viewports, no browser errors')
     browser.close()

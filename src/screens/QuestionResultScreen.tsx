@@ -7,8 +7,8 @@ import { generateColor } from '../game/colorEngine';
 import { GameSession, Question } from '../types/game';
 export function QuestionResults({ session, question }: { session: GameSession; question: Question }) {
   return <View style={ui.panel}><Text style={ui.label}>{question.name} ・ {question.reading}</Text>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}><ColorSwatch color={generateColor(question.recipe)} /><Text style={ui.note}>お題</Text></View>
-    {session.players.map(player => {
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}><ColorSwatch color={generateColor(question.recipe)} size={100} /><Text style={ui.note}>お題</Text></View>
+    {[...session.players].sort((a, b) => (session.answers.find(x => x.playerId === b.id && x.questionId === question.id)?.score ?? 0) - (session.answers.find(x => x.playerId === a.id && x.questionId === question.id)?.score ?? 0)).map(player => {
       const answer = session.answers.find(a => a.questionId === question.id && a.playerId === player.id);
       return answer ? <PlayerResult key={player.id} player={player} answer={answer} /> : null;
     })}</View>;

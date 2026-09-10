@@ -16,7 +16,12 @@ export const QUESTIONS: readonly Question[] = [
 export const QUESTION = QUESTIONS[0];
 
 // 将来はこの選択関数でシャッフル等に差し替えられる。
-export function selectQuestions(count: number): readonly Question[] {
-  if (count > QUESTIONS.length || count < 1) throw new Error('問題数が不正です');
-  return QUESTIONS.slice(0, count);
+export function selectQuestions(count: number, questionIds: readonly string[] = QUESTIONS.map(q => q.id)): readonly Question[] {
+  const available = questionIds.map(id => {
+    const question = QUESTIONS.find(q => q.id === id);
+    if (!question) throw new Error(`不明な問題: ${id}`);
+    return question;
+  });
+  if (count > available.length || count < 1) throw new Error('問題数が不正です');
+  return available.slice(0, count);
 }

@@ -20,5 +20,7 @@ export type GameSession = Readonly<{
   currentPlayerIndex: number;
   currentQuestion: Question;
   answers: readonly PlayerAnswer[];
-  gameStatus: 'handoff' | 'playing' | 'questionResult' | 'finished';
+  gameStatus: 'handoff' | 'questionIntro' | 'answerSaved' | 'playing' | 'questionResult' | 'finished';
 }>;
+
+export type Stage = Readonly<{ id: string; name: string; description: string; questionIds: readonly string[] }>;
