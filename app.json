@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "かさねいろ",
+    "slug": "kasane-iro",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": { "supportsTablet": false },
+    "android": { "package": "com.kasaneiro.app" }
+  }
+}

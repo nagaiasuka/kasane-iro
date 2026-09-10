@@ -1,0 +1,8 @@
+node_modules/
+!.gitignore
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+.DS_Store
+*.log
