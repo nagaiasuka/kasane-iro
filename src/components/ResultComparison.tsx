@@ -21,7 +21,7 @@ export function ResultComparison({ session, question, detailed = false, fill = f
   const answers = session.players.flatMap(player => {
     const answer = session.answers.find(a => a.questionId === question.id && a.playerId === player.id);
     return answer ? [{ player, answer }] : [];
-  }).sort((a, b) => b.answer.score - a.answer.score);
+  });
   const stackSlots = Math.max(question.recipe.length, ...answers.map(({ answer }) => answer.recipe.length));
   if (fill) return <AdaptiveComparison session={session} question={question} stackSlots={stackSlots} />;
   const canonical = <RecipeDisplay title="正解" recipe={question.recipe} color={generateColor(question.recipe)} score={100}
@@ -51,7 +51,7 @@ function AdaptiveComparison({ session, question, stackSlots }: { session: GameSe
   const answers = session.players.flatMap(player => {
     const answer = session.answers.find(a => a.questionId === question.id && a.playerId === player.id);
     return answer ? [{ player, answer }] : [];
-  }).sort((a, b) => b.answer.score - a.answer.score);
+  });
   const canonical = <AdaptiveRecipeDisplay title="正解" recipe={question.recipe} color={generateColor(question.recipe)} score={100}
     testID="canonical-answer" recipeTestID="answer-recipe" stackSlots={stackSlots} layout={layout.canonical} />;
   const players = answers.map(({ player, answer }) => <AdaptiveRecipeDisplay key={player.id} title={player.name}
