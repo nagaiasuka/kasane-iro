@@ -3,10 +3,10 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { QuitButton } from './GameExit';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export function Screen({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+export function Screen({ title, subtitle, children, compact = false }: { title: string; subtitle?: string; children: ReactNode; compact?: boolean }) {
   return <SafeAreaView style={ui.safe}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={ui.container}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={ui.brand}>かさねいろ</Text><QuitButton /></View><Text accessibilityRole="header" style={ui.title}>{title}</Text>
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[ui.container, compact && { padding: 12, gap: 8 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={ui.brand}>かさねいろ</Text><QuitButton /></View><Text accessibilityRole="header" style={[ui.title, compact && { fontSize: 19, marginTop: 0 }]}>{title}</Text>
       {subtitle && <Text style={ui.note}>{subtitle}</Text>}{children}
     </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }

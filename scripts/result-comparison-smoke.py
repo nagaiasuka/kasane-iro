@@ -1,13 +1,23 @@
-# Optional browser regression check: run Expo on port 8093; requires Python Playwright + Chromium.
+# Optional browser regression check: run Expo on port 8094; requires Python Playwright + Chromium.
 import os
+import sys
+import subprocess
+import tempfile
+from pathlib import Path
 from playwright.sync_api import sync_playwright
+
+fixture_dir = tempfile.TemporaryDirectory(prefix='kasane-result-layout-')
+subprocess.run(['node', '-e', """
+const dir = process.argv[1];
+require('esbuild').buildSync({entryPoints:['scripts/result-layout-fixture.jsx'],bundle:true,outfile:dir+'/app.js',platform:'browser',alias:{'react-native':'react-native-web'},resolveExtensions:['.web.tsx','.tsx','.web.ts','.ts','.web.js','.js','.json'],loader:{'.js':'jsx'},define:{global:'globalThis',__DEV__:'false','process.env.NODE_ENV':'\"production\"'}});
+require('fs').writeFileSync(dir+'/index.html','<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{height:100%;margin:0}#root{display:flex;flex-direction:column}</style><div id="root"></div><script src="app.js"></script>');
+""", fixture_dir.name], check=True)
 
 with sync_playwright() as p:
     browser = p.chromium.launch()
     page = browser.new_page(viewport={"width": 390, "height": 844})
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
-    page.goto(os.environ.get('KASANE_WEB_URL', 'http://localhost:8093'), wait_until='networkidle')
     def click(name): page.get_by_role('button', name=name, exact=True).click()
     def drag(card, destination='play-field', top=False):
         page.wait_for_timeout(700)
@@ -15,7 +25,9 @@ with sync_playwright() as p:
         target = page.get_by_test_id(destination).bounding_box()
         x = source['x'] + source['width'] / 2
         y = source['y'] + (5 if top else source['height'] / 2)
-        dx = target['x'] + target['width']/2 - (source['x'] + source['width']/2)
+        # Use a clear diagonal gesture, avoiding a near-vertical drag in the web responder.
+        destination_x = target['x'] + target['width'] * (0.85 if x < target['x'] + target['width']/2 else 0.15)
+        dx = destination_x - x
         dy = target['y'] + target['height']/2 - (source['y'] + source['height']/2)
         page.mouse.move(x,y); page.mouse.down(); page.mouse.move(x+dx,y+dy,steps=15); page.mouse.up()
         page.wait_for_timeout(600)
@@ -47,47 +59,71 @@ with sync_playwright() as p:
         previous = None
         for i, id in enumerate(recipe):
             card = cards.nth(i)
-            assert card.inner_text() == labels[id]
+            assert card.get_attribute('aria-label').startswith(labels[id])
             box = card.bounding_box()
             if previous:
                 assert previous['y'] < box['y'] < previous['y'] + previous['height']
             previous = box
             assert int(card.evaluate('(el) => getComputedStyle(el).zIndex')) == i + 10
         assert not any(id in page.locator('body').inner_text() for id in labels)
-    setup()
-    canonical = [['C70','Y70'], ['M50','C50'], ['Y50','M50']]
-    played = ['Y70', 'C70', 'K25']
-    for q in range(3):
-        hidden(); click('はじめる'); hidden()
-        for id in played: drag(id)
-        click('この色で回答する'); hidden(); click('結果を見る')
-        page.get_by_test_id('canonical-answer').wait_for()
-        verify_stack('answer-recipe', canonical[q])
-        verify_stack('player-recipe-player-1', played)
-        for width in [320, 430, 520]:
-            page.set_viewport_size({'width':width, 'height':844}); page.wait_for_timeout(700)
-            left = page.get_by_test_id('canonical-answer').bounding_box()
-            right = page.get_by_test_id('player-answer-player-1').bounding_box()
-            if width == 320: assert right['y'] > left['y'] + left['height']
-            else: assert abs(left['y']-right['y']) < 1 and right['x'] > left['x']
+    viewports = [(320,568), (375,667), (390,844), (412,915)]
+    def verify_layout(count):
+        for width, height in viewports:
+            page.set_viewport_size({'width':width, 'height':height}); page.wait_for_timeout(700)
+            blocks = [page.get_by_test_id('canonical-answer').bounding_box()] + [page.get_by_test_id(f'player-answer-player-{n+1}').bounding_box() for n in range(count)]
+            next_button = page.get_by_role('button',name='次の問題へ',exact=True).bounding_box()
+            assert next_button['y'] + next_button['height'] <= height, (count,width,next_button)
+            assert all(b['x'] >= 0 and b['x']+b['width'] <= width and b['y']+b['height'] <= height for b in blocks), (count,width,blocks)
+            if count <= 2: assert max(b['y'] for b in blocks) - min(b['y'] for b in blocks) < 1
+            if count == 3: assert len(set(round(b['y']) for b in blocks)) == 2
+            if count == 4: assert len(set(round(b['y']) for b in blocks)) == 3 and blocks[0]['y'] == min(b['y'] for b in blocks)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-        if q == 0: page.screenshot(path='/tmp/kasane-comparison.png', full_page=True)
-        click('最終結果を見る' if q == 2 else '次の問題へ')
-    click('第2問 藤　詳細を見る')
-    verify_stack('answer-recipe', canonical[1]); verify_stack('player-recipe-player-1', played)
-    page.reload(wait_until='networkidle'); setup(players=2)
-    for n, recipe in enumerate([['C50'], ['M70']]):
-        hidden(); click('準備OK'); hidden(); click('はじめる')
-        for id in recipe: drag(id)
-        click('この色で回答する'); hidden(); click('次へ' if n == 0 else '結果を見る')
-    assert page.get_by_test_id('canonical-answer').count() == 1
-    verify_stack('player-recipe-player-1', ['C50']); verify_stack('player-recipe-player-2', ['M70'])
-    canonical_box = page.get_by_test_id('canonical-answer').bounding_box()
-    for n in [1,2]: assert page.get_by_test_id(f'player-answer-player-{n}').bounding_box()['y'] > canonical_box['y']
-    page.reload(wait_until='networkidle'); setup(timer=True)
-    click('はじめる'); page.wait_for_timeout(16000); hidden(); click('結果を見る')
-    verify_stack('player-recipe-player-1', [])
+            scrolls = page.locator('*').evaluate_all('(els) => els.filter(e => getComputedStyle(e).overflowY === "auto" || getComputedStyle(e).overflowY === "scroll").map(e => e.scrollHeight-e.clientHeight)')
+            assert all(delta <= 1 for delta in scrolls), (count, width, scrolls)
+            page.screenshot(path=f'/tmp/kasane-phase42-{count}p-{width}.png',full_page=True)
+    for count in [1,2,3,4]:
+        page.goto(Path(fixture_dir.name, 'index.html').as_uri() + f'?players={count}', wait_until='networkidle')
+        page.get_by_test_id('canonical-answer').wait_for()
+        for n in range(count): verify_stack(f'player-recipe-player-{n+1}', list(reversed(list(labels))))
+        verify_layout(count)
+        print(f'PASS: seven-card fixture, {count} players, all four sizes, no scroll', flush=True)
+    if '--layout-only' in sys.argv:
+        assert not errors, errors
+        browser.close()
+        fixture_dir.cleanup()
+        sys.exit(0)
+    page.goto(os.environ.get('KASANE_WEB_URL', 'http://localhost:8094'), wait_until='networkidle')
+    for count in [1,2,3,4]:
+        page.set_viewport_size({'width':390, 'height':844})
+        if count > 1: page.reload(wait_until='networkidle')
+        setup(players=count)
+        recipes = [['Y70','C70'], ['C50'], ['M70'], ['M50','K25']]
+        for n in range(count):
+            hidden()
+            if count > 1: click('準備OK')
+            click('はじめる'); hidden()
+            for id in recipes[n]:
+                drag(id)
+                assert labels[id] in page.get_by_test_id('stack-order').inner_text(), id
+            click('この色で回答する'); hidden(); click('次へ' if n < count - 1 else '結果を見る')
+        page.get_by_test_id('canonical-answer').wait_for()
+        verify_stack('answer-recipe', ['C70','Y70'])
+        for n in range(count): verify_stack(f'player-recipe-player-{n+1}', recipes[n])
+        verify_layout(count)
+        print(f'PASS: {count} players, all four viewport sizes, no scroll', flush=True)
+        if count == 1:
+            for q in [1,2]:
+                click('次の問題へ'); click('はじめる'); drag('C50'); click('この色で回答する'); click('結果を見る')
+            click('最終結果を見る'); click('第1問 萌黄　詳細を見る')
+            verify_stack('answer-recipe', ['C70','Y70']); verify_stack('player-recipe-player-1', recipes[0])
+    page.reload(wait_until='networkidle'); setup(final=True,timer=True)
+    for q in range(3):
+        hidden(); click('はじめる'); page.wait_for_timeout(16000); hidden()
+        click('最終結果を見る' if q == 2 else '次の問題へ'); hidden()
+    click('第1問 萌黄　詳細を見る')
+    verify_stack('answer-recipe', ['C70','Y70']); verify_stack('player-recipe-player-1', [])
     assert '空回答 ・ 時間切れ' in page.get_by_test_id('player-answer-player-1').inner_text()
     assert not errors, errors
-    print('PASS: canonical/actual recipes, order, labels, responsive comparison, detail, multiplayer privacy, empty timeout, no browser errors')
+    print('PASS: canonical/actual recipes, seven-card order, labels, detailed view, multiplayer/final-only privacy, empty timeout, no browser errors')
     browser.close()
+fixture_dir.cleanup()

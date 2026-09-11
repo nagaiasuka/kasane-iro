@@ -9,6 +9,7 @@ type Props = {
   id: CardId; position: Point; width: number; height: number; zIndex: number;
   placed: boolean; locked: boolean;
   testID?: string;
+  showLabel?: boolean;
   onStart: (id: CardId) => void;
   onDrop: (id: CardId, center: Point | null) => void;
 };
@@ -66,7 +67,7 @@ export function ColorCard(props: Props) {
         borderColor: dragging ? '#314940' : 'rgba(38, 56, 48, 0.24)',
       }]}
     >
-      <Text style={styles.label}>{CARD_LABELS[props.id]}</Text>
+      {props.showLabel !== false && <Text style={styles.label}>{CARD_LABELS[props.id]}</Text>}
       {!props.placed && <Text style={styles.mark}>かさねいろ</Text>}
     </Animated.View>
   );

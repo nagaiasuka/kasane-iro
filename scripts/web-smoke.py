@@ -89,7 +89,7 @@ with sync_playwright() as p:
         for card in recipe: drag(card)
         click('この色で回答する')
         saved('結果を見る')
-        page.get_by_text('再現率 100.0%',exact=True).first.wait_for()
+        page.get_by_text('100.0%',exact=True).first.wait_for()
         page.get_by_test_id('canonical-answer').wait_for()
         assert page.get_by_test_id('answer-recipe').get_by_text(labels[recipe[0]],exact=True).count()==1
         cancel_quit()
@@ -100,7 +100,7 @@ with sync_playwright() as p:
     assert page.get_by_text('100.0%',exact=True).count()==1
     click('第2問 藤　詳細を見る')
     page.get_by_text('第2問の詳細',exact=True).wait_for()
-    assert page.get_by_text('再現率 100.0%',exact=True).count()==2
+    assert page.get_by_text('100.0%',exact=True).count()==2
     assert '赤・淡' in page.get_by_test_id('answer-recipe').inner_text()
     assert '青・淡' in page.get_by_test_id('answer-recipe').inner_text()
     click('最終結果へ戻る')
