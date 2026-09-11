@@ -4,6 +4,7 @@ import { CARD_LABELS } from '../game/cards';
 import { PAPER, rgbStyle } from '../game/colorEngine';
 import { CardId } from '../types/game';
 import { ColorCard } from './ColorCard';
+import { ResultTileLayout } from './resultLayout';
 
 export type StackSize = 'large' | 'medium' | 'small';
 const dimensions = {
@@ -13,18 +14,18 @@ const dimensions = {
 };
 const ignoreDrag = () => {};
 
-export function CompactRecipeStack({ recipe, size, stackSlots, testID }: {
-  recipe: readonly CardId[]; size: StackSize; stackSlots: number; testID: string;
+export function CompactRecipeStack({ recipe, size, stackSlots, testID, layout }: {
+  recipe: readonly CardId[]; size: StackSize; stackSlots: number; testID: string; layout?: ResultTileLayout;
 }) {
   const [width, setWidth] = useState(0);
-  const { cardHeight, cardWidth, step } = dimensions[size];
-  const height = cardHeight + Math.max(0, stackSlots - 1) * step + 8;
+  const { cardHeight, cardWidth, step } = layout ?? dimensions[size];
+  const height = layout?.stackHeight ?? cardHeight + Math.max(0, stackSlots - 1) * step + 8;
   const actualWidth = Math.min(cardWidth, Math.max(0, width - 12));
   return <View testID={testID} pointerEvents="none" accessible
     accessibilityLabel={recipe.length ? `カードの重ね順、下から上へ：${recipe.map(id => CARD_LABELS[id]).join('、')}` : '使用したカードはありません'}
     onLayout={event => setWidth(event.nativeEvent.layout.width)} style={[styles.paper, { height }]}>
     {width > 0 && recipe.map((id, index) => <ColorCard key={`${index}:${id}`}
-      testID={`${testID}-card-${index}`} id={id} placed locked showLabel={size === 'large'}
+      testID={`${testID}-card-${index}`} id={id} placed locked showLabel={layout ? step >= 15 && actualWidth >= 62 : size === 'large'}
       position={{ x: (width - actualWidth) / 2, y: 4 + index * step }}
       width={actualWidth} height={cardHeight} zIndex={index + 10} onStart={ignoreDrag} onDrop={ignoreDrag} />)}
     {!recipe.length && <Text style={styles.empty}>カードなし</Text>}

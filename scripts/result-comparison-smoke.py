@@ -75,8 +75,21 @@ with sync_playwright() as p:
             assert next_button['y'] + next_button['height'] <= height, (count,width,next_button)
             assert all(b['x'] >= 0 and b['x']+b['width'] <= width and b['y']+b['height'] <= height for b in blocks), (count,width,blocks)
             if count <= 2: assert max(b['y'] for b in blocks) - min(b['y'] for b in blocks) < 1
-            if count == 3: assert len(set(round(b['y']) for b in blocks)) == 2
+            if count == 3: assert len(set(round(b['y']) for b in blocks)) == 2 and blocks[0]['y'] == min(b['y'] for b in blocks)
             if count == 4: assert len(set(round(b['y']) for b in blocks)) == 3 and blocks[0]['y'] == min(b['y'] for b in blocks)
+            grid = page.get_by_test_id('result-grid').bounding_box()
+            footer = page.get_by_test_id('result-footer').bounding_box()
+            assert height - (footer['y'] + footer['height']) <= 18, (count, width, footer)
+            assert abs(max(b['y'] + b['height'] for b in blocks) - (grid['y'] + grid['height'])) < 2
+            for n, block in enumerate(blocks):
+                prefix = 'canonical-answer' if n == 0 else f'player-answer-player-{n}'
+                swatch = page.get_by_test_id(prefix + '-color').bounding_box()
+                assert swatch['x'] >= block['x'] and swatch['x'] + swatch['width'] <= block['x'] + block['width'] + 1
+                recipe_id = 'answer-recipe' if n == 0 else f'player-recipe-player-{n}'
+                for card in page.get_by_test_id(recipe_id).locator('[data-testid*="-card-"]').all():
+                    box = card.bounding_box()
+                    assert box['x'] >= block['x'] and box['x'] + box['width'] <= block['x'] + block['width'] + 1
+                    assert box['y'] + box['height'] <= block['y'] + block['height'] + 1
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             scrolls = page.locator('*').evaluate_all('(els) => els.filter(e => getComputedStyle(e).overflowY === "auto" || getComputedStyle(e).overflowY === "scroll").map(e => e.scrollHeight-e.clientHeight)')
             assert all(delta <= 1 for delta in scrolls), (count, width, scrolls)
