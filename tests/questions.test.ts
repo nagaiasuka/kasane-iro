@@ -22,7 +22,7 @@ test('119問と全メタデータを保持し、generatedHexが既存エンジ�
   assert.equal(QUESTIONS.length, 119);
   assert.deepEqual(ALL_QUESTIONS.slice(0, QUESTIONS.length), TRADITIONAL_COLOR_QUESTIONS);
   assert.equal(new Set(QUESTIONS.map(q => q.id)).size, 119);
-  assert.deepEqual(STAGES[0].questionIds, QUESTIONS.map(q => q.id));
+  assert.deepEqual(STAGES.find(stage => stage.id === 'traditional')!.questionIds, QUESTIONS.map(q => q.id));
   for (const q of QUESTIONS) {
     assert.ok(q.name && q.romanized && q.id);
     assert.match(q.sourceHex, /^#[0-9A-F]{6}$/);

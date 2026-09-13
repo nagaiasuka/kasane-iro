@@ -4,6 +4,12 @@ import { SEASON_QUESTIONS, NATURE_QUESTIONS, COLOR_LEARNING_QUESTIONS } from './
 
 export const STAGES: readonly Stage[] = [
   {
+    id: 'color-learning', name: '色彩を学ぶ',
+    description: 'カードを重ねながら、色の混ざり方を学ぼう。',
+    questionIds: COLOR_LEARNING_QUESTIONS.map(question => question.id),
+    previewQuestionIds: ['color-02', 'color-04', 'color-06', 'color-07'],
+  },
+  {
     id: 'traditional', name: '日本の伝統色',
     description: `日本に古くから伝わる${TRADITIONAL_COLOR_QUESTIONS.length}色を、7枚のカードで再現しよう。`,
     questionIds: TRADITIONAL_COLOR_QUESTIONS.map(question => question.id),
@@ -20,12 +26,6 @@ export const STAGES: readonly Stage[] = [
     description: '空・海・森・大地など、自然の色を再現しよう。',
     questionIds: NATURE_QUESTIONS.map(question => question.id),
     previewQuestionIds: ['nature-01', 'nature-07', 'nature-12', 'nature-23'],
-  },
-  {
-    id: 'color-learning', name: '色彩を学ぶ',
-    description: 'カードを重ねながら、色の混ざり方を学ぼう。',
-    questionIds: COLOR_LEARNING_QUESTIONS.map(question => question.id),
-    previewQuestionIds: ['color-02', 'color-04', 'color-06', 'color-07'],
   },
 ];
 

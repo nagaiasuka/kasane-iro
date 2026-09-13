@@ -15,7 +15,7 @@ function seededRandom(seed: number) {
 
 test('4ステージ119/40/40/30問・計229問を重複IDなく収録し見本は各ステージ所属', () => {
   assert.deepEqual(STAGES.map(s => [s.id, s.questionIds.length]), [
-    ['traditional', 119], ['seasons', 40], ['nature', 40], ['color-learning', 30],
+    ['color-learning', 30], ['traditional', 119], ['seasons', 40], ['nature', 40],
   ]);
   assert.equal(QUESTIONS.length, 229);
   assert.equal(new Set(QUESTIONS.map(q => q.id)).size, 229);
@@ -24,7 +24,7 @@ test('4ステージ119/40/40/30問・計229問を重複IDなく収録し見本�
     assert.equal(stage.previewQuestionIds.length, 4);
     assert.ok(stage.previewQuestionIds.every(id => stage.questionIds.includes(id)));
   }
-  assert.equal(findStage('traditional-japan'), STAGES[0]);
+  assert.equal(findStage('traditional-japan'), findStage('traditional'));
 });
 
 test('追加110問の合成色がgeneratedHexと完全一致・正解100%・学習30問すべて解説あり', () => {
