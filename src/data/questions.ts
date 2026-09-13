@@ -1,13 +1,14 @@
 import { Question } from '../types/game';
 import { TRADITIONAL_COLOR_QUESTIONS } from './questions.generated';
+import { INITIAL_RELEASE_EXTRA_QUESTIONS } from './stage-questions.generated';
 
-export const QUESTIONS: readonly Question[] = TRADITIONAL_COLOR_QUESTIONS;
+export const QUESTIONS: readonly Question[] = [...TRADITIONAL_COLOR_QUESTIONS, ...INITIAL_RELEASE_EXTRA_QUESTIONS];
 export const QUESTION = QUESTIONS[0];
 
 // Shuffle before filtering so all traditional colors, including duplicates, remain eligible.
 export function selectQuestions(
   count: number | 'all',
-  questionIds: readonly string[] = QUESTIONS.map(q => q.id),
+  questionIds: readonly string[] = TRADITIONAL_COLOR_QUESTIONS.map(q => q.id),
   random: () => number = Math.random,
 ): readonly Question[] {
   const available = questionIds.map(id => {

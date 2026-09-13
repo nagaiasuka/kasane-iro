@@ -19,12 +19,12 @@ require('fs').writeFileSync(dir+'/index.html','<!doctype html><meta name="viewpo
         page.goto(Path(directory, 'index.html').as_uri(), wait_until='networkidle')
         def click(name): page.get_by_role('button', name=name, exact=True).click()
         def title(): page.get_by_role('button', name='ゲームをはじめる', exact=True).wait_for()
-        def resume(): page.get_by_role('button', name=re.compile('全問のつづきから')).click()
+        def resume(): page.get_by_role('button', name=re.compile('日本の伝統色のつづきから')).click()
         def quit_game():
             click('ゲームをやめる')
             click('タイトルへ戻る')
             title()
-        def setup(players=1, count='全問', timing='1問ごとに表示', limit='無制限'):
+        def setup(players=1, count='全119問', timing='1問ごとに表示', limit='無制限'):
             click('ゲームをはじめる'); click('日本の伝統色を選ぶ')
             for label in [f'{players}人', count, timing, limit]:
                 page.get_by_role('radio', name=label, exact=True).click()
@@ -57,7 +57,7 @@ require('fs').writeFileSync(dir+'/index.html','<!doctype html><meta name="viewpo
         click('準備OK')
         page.get_by_text('第1問 / 3問', exact=True).wait_for()
         quit_game()
-        assert page.get_by_role('button', name=re.compile('全問のつづきから')).count() == 1
+        assert page.get_by_role('button', name=re.compile('日本の伝統色のつづきから')).count() == 1
         print('PASS: 2人の6問目・問題順/回答/位置保持、新規通常ゲームは1問目', flush=True)
         for timing in ['question', 'final']:
             page.evaluate('(timing) => window.progressTest.seed({index:118, status:"answerSaved", resultTiming:timing})', timing)
@@ -69,9 +69,9 @@ require('fs').writeFileSync(dir+'/index.html','<!doctype html><meta name="viewpo
             page.get_by_role('button', name=re.compile('第1問 .*詳細を見る')).click()
             page.get_by_test_id('canonical-answer').wait_for()
             click('最終結果へ戻る'); click('タイトルへ戻る'); title()
-            assert page.get_by_role('button', name=re.compile('全問のつづきから')).count() == 0
+            assert page.get_by_role('button', name=re.compile('日本の伝統色のつづきから')).count() == 0
             page.reload(wait_until='networkidle'); title()
-            assert page.get_by_role('button', name=re.compile('全問のつづきから')).count() == 0
+            assert page.get_by_role('button', name=re.compile('日本の伝統色のつづきから')).count() == 0
         print('PASS: 両結果表示で119問完走後に保存削除、結果詳細・再起動後もつづきなし', flush=True)
         # Exercise the real timer, handoff, result and replay screens for 1–4 players.
         page.clock.install()

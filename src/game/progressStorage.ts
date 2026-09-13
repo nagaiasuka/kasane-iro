@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CardId, GameSession } from '../types/game';
 import { QUESTIONS } from '../data/questions';
-import { STAGES } from '../data/stages';
+import { findStage } from '../data/stages';
 import { CARD_IDS } from './cards';
 import { scoreAnswer } from './scoring';
 import { questionColor } from './questionColor';
@@ -21,7 +21,7 @@ function isValidProgress(value: unknown): value is SavedAllProgress {
   const session = progress.session as GameSession | undefined;
   if (progress.version !== 1 || typeof progress.stageId !== 'string' || typeof progress.savedAt !== 'string' || !session) return false;
   const settings = session.settings;
-  const stage = STAGES.find(candidate => candidate.id === progress.stageId);
+  const stage = findStage(progress.stageId);
   if (!stage || !Number.isFinite(Date.parse(progress.savedAt))) return false;
   if (settings?.questionCount !== 'all' || ![1, 2, 3, 4].includes(settings.playerCount) ||
       ![null, 15, 30, 60].includes(settings.timeLimit) || !['question', 'final'].includes(settings.resultTiming)) return false;
@@ -33,7 +33,7 @@ function isValidProgress(value: unknown): value is SavedAllProgress {
   // Saved questions must still match the master; never accept unknown cards or targets.
   const sameQuestion = (q: GameSession['currentQuestion'], expected: GameSession['currentQuestion'] | undefined) =>
     q && expected && q.id === expected.id && q.name === expected.name && q.romanized === expected.romanized &&
-    q.sourceHex === expected.sourceHex && q.generatedHex === expected.generatedHex && q.sourceSimilarity === expected.sourceSimilarity &&
+    q.sourceHex === expected.sourceHex && q.generatedHex === expected.generatedHex && q.sourceSimilarity === expected.sourceSimilarity && q.explanation === expected.explanation &&
     Array.isArray(q.recipe) && q.recipe.join(',') === expected.recipe.join(',');
   if (session.questions.some(q => !stage.questionIds.includes(q?.id) || !sameQuestion(q, QUESTIONS.find(master => master.id === q?.id)))) return false;
   const qi = session.currentQuestionIndex;
@@ -89,7 +89,7 @@ export async function loadAllProgress(): Promise<SavedAllProgress | null> {
     if (!raw) return null;
     try {
       const parsed: unknown = JSON.parse(raw);
-      if (isValidProgress(parsed)) return { ...parsed, session: normalizeForResume(parsed.session) };
+      if (isValidProgress(parsed)) return { ...parsed, stageId: findStage(parsed.stageId)!.id, session: normalizeForResume(parsed.session) };
     } catch { /* Malformed JSON or shape is not resumable. */ }
     try { await AsyncStorage.removeItem(STORAGE_KEY); } catch { /* Ignore unusable data even if removal fails. */ }
     return null;

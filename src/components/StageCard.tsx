@@ -14,7 +14,7 @@ export function StageCard({ stage, onSelect }: { stage: Stage; onSelect: () => v
       <Text accessibilityLabel={`収録問題数 ${total}問`} style={{ color: '#53634F', backgroundColor: '#EFF2E8', fontSize: 12, lineHeight: 20, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>全{total}問</Text>
     </View>
     <Text style={ui.note}>{stage.description}</Text>
-    <View style={{ flexDirection: 'row', gap: 10 }}>{['chigusa', 'kariyasu', 'seiji', 'imayoh'].map(id => {
+    <View style={{ flexDirection: 'row', gap: 10 }}>{stage.previewQuestionIds.map(id => {
       const question = QUESTIONS.find(q => q.id === id);
       return question ? <ColorSwatch key={id} color={questionColor(question)} size={44} /> : null;
     })}</View>

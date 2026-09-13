@@ -13,7 +13,7 @@ import { clearAllProgress, loadAllProgress, saveAllProgress, SavedAllProgress } 
 import { GameSession, GameSettings, Stage } from './src/types/game';
 
 import { GameExit } from './src/components/GameExit';
-import { STAGES } from './src/data/stages';
+import { STAGES, findStage } from './src/data/stages';
 import { HowToPlayScreen } from './src/screens/HowToPlayScreen';
 import { StageSelectScreen } from './src/screens/StageSelectScreen';
 import { QuestionIntroScreen } from './src/screens/QuestionIntroScreen';
@@ -69,7 +69,7 @@ export default function App() {
 
   function resumeAllQuestions() {
     if (!savedProgress) return;
-    const savedStage = STAGES.find(candidate => candidate.id === savedProgress.stageId) || STAGES[0];
+    const savedStage = findStage(savedProgress.stageId) || STAGES[0];
     setStage(savedStage);
     setSettings(savedProgress.session.settings);
     setSession(savedProgress.session);
@@ -99,7 +99,7 @@ export default function App() {
   }
 
   const resumeLabel = savedProgress
-    ? `全問のつづきから（${savedProgress.session.currentQuestionIndex + 1}/${savedProgress.session.questions.length}問）`
+    ? `${findStage(savedProgress.stageId)?.name ?? '全問'}のつづきから（${savedProgress.session.currentQuestionIndex + 1}/${savedProgress.session.questions.length}問）`
     : undefined;
 
   return <SafeAreaProvider><StatusBar barStyle="dark-content" backgroundColor="#F7F4EC" />
@@ -107,7 +107,7 @@ export default function App() {
       onResume={savedProgress ? resumeAllQuestions : undefined} resumeLabel={resumeLabel} />}
     {screen === 'howTo' && <HowToPlayScreen onBack={() => setScreen('title')} />}
     {screen === 'stages' && <StageSelectScreen onSelect={selected => { setStage(selected); setScreen('settings'); }} onBack={() => setScreen('title')} />}
-    {screen === 'settings' && <GameSettingsScreen onBack={() => setScreen('stages')} stageName={stage.name} settings={settings} onChange={setSettings} onNext={() => setScreen('players')} />}
+    {screen === 'settings' && <GameSettingsScreen onBack={() => setScreen('stages')} stageName={stage.name} questionTotal={stage.questionIds.length} settings={settings} onChange={setSettings} onNext={() => setScreen('players')} />}
     {screen === 'players' && <PlayerSetupScreen count={settings.playerCount} onStart={start} onBack={() => setScreen('settings')} />}
     {screen === 'game' && <GameExit enabled={session?.gameStatus !== 'finished'} preserveProgress={session?.settings.questionCount === 'all'} onExit={exitGame}>{game()}</GameExit>}
   </SafeAreaProvider>;

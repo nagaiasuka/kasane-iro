@@ -35,6 +35,7 @@ export function ResultComparison({ session, question, detailed = false, fill = f
 
   return <View testID="result-comparison" style={styles.comparison}>
     <Text style={styles.question}>{question.name}<Text style={styles.reading}>　{question.romanized}</Text></Text>
+    {question.explanation && <Text testID="question-explanation" style={styles.explanation}>{question.explanation}</Text>}
     {banner && canonical}
     {rows.map((row, i) => <View key={i} testID={`result-row-${i}`} style={styles.row}>
       {row.map((cell, j) => <View key={j} style={styles.cell}>{cell}</View>)}
@@ -59,6 +60,7 @@ function AdaptiveComparison({ session, question, stackSlots }: { session: GameSe
     testID={`player-answer-${player.id}`} recipeTestID={`player-recipe-${player.id}`} stackSlots={stackSlots} layout={layout.player} />);
   const cells = count >= 3 ? players : [canonical, ...players];
   return <View testID="result-comparison" style={{ flex: 1, gap: 6 }}>
+    {question.explanation && <Text testID="question-explanation" style={styles.explanation}>{question.explanation}</Text>}
     <View testID="result-grid" style={{ flex: 1, gap: layout.gap }} onLayout={event => setArea(event.nativeEvent.layout)}>
       {area.width > 0 && area.height > 0 && <>
         {count >= 3 && canonical}
@@ -74,6 +76,7 @@ function AdaptiveComparison({ session, question, stackSlots }: { session: GameSe
 
 const styles = StyleSheet.create({
   comparison: { gap: 8 },
+  explanation: { color: '#53634F', backgroundColor: '#EFF2E8', fontSize: 12, lineHeight: 18, padding: 8, borderRadius: 8 },
   question: { color: '#334735', fontSize: 16 },
   reading: { color: '#7D8372', fontSize: 11 },
   row: { flexDirection: 'row', gap: 6, alignItems: 'stretch' },

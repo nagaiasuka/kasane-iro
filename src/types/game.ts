@@ -5,6 +5,7 @@ export type Question = Readonly<{
   id: string; name: string; romanized: string;
   sourceHex: `#${string}`; generatedHex: `#${string}`; sourceSimilarity: number;
   recipe: readonly CardId[]; // bottom -> top
+  explanation?: string;
 }>;
 export type Answer = Readonly<{ recipe: readonly CardId[]; color: RGB; score: number }>;
 
@@ -27,4 +28,4 @@ export type GameSession = Readonly<{
   gameStatus: 'handoff' | 'questionIntro' | 'answerSaved' | 'playing' | 'questionResult' | 'finished';
 }>;
 
-export type Stage = Readonly<{ id: string; name: string; description: string; questionIds: readonly string[] }>;
+export type Stage = Readonly<{ id: string; name: string; description: string; questionIds: readonly string[]; previewQuestionIds: readonly string[] }>;

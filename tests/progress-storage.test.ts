@@ -103,3 +103,29 @@ test('一度保存に失敗しても次の保存を実行できる', async () =>
   await api.saveAllProgress(stage, s);
   assert.ok(await api.loadAllProgress());
 });
+
+test('全4ステージの順序・回答・プレイヤー位置を復元し完走まで継続できる', async () => {
+  const { STAGES } = await import('../src/data/stages');
+  for (const selectedStage of STAGES) for (const resultTiming of ['question', 'final'] as const) {
+    let s = createSession({ ...DEFAULT_SETTINGS, questionCount: 'all', playerCount: 2, resultTiming }, [], selectedStage.questionIds);
+    while (s.currentQuestionIndex < 2 || s.currentPlayerIndex < 1 || s.gameStatus !== 'playing') s = step(s);
+    await api.saveAllProgress(selectedStage.id, s);
+    const loaded = await api.loadAllProgress();
+    assert.ok(loaded);
+    assert.equal(loaded.stageId, selectedStage.id);
+    assert.deepEqual(loaded.session, { ...s, gameStatus: 'questionIntro' });
+    s = loaded.session;
+    while (s.gameStatus !== 'finished') s = step(s);
+    assert.equal(s.answers.length, selectedStage.questionIds.length * 2);
+    await api.clearAllProgress();
+    assert.equal(await api.loadAllProgress(), null);
+  }
+});
+
+test('旧traditional-japanの保存は問題順と回答を維持してtraditionalとして復元', async () => {
+  const s = step(step(createSession({ ...DEFAULT_SETTINGS, questionCount: 'all' }, [])));
+  await api.saveAllProgress('traditional-japan', s);
+  const loaded = await api.loadAllProgress();
+  assert.equal(loaded?.stageId, 'traditional');
+  assert.deepEqual(loaded?.session, s);
+});

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { QUESTIONS, selectQuestions } from '../src/data/questions';
+import { QUESTIONS as ALL_QUESTIONS, selectQuestions } from '../src/data/questions';
 import { TRADITIONAL_COLOR_QUESTIONS } from '../src/data/questions.generated';
 import { STAGES } from '../src/data/stages';
 import { CARD_IDS } from '../src/game/cards';
@@ -8,6 +8,8 @@ import { generateColor } from '../src/game/colorEngine';
 import { questionColor } from '../src/game/questionColor';
 import { colorSimilarity, scoreAnswer } from '../src/game/scoring';
 import { createSession, DEFAULT_SETTINGS, saveAnswer, startQuestion } from '../src/game/session';
+
+const QUESTIONS = TRADITIONAL_COLOR_QUESTIONS;
 
 function seededRandom(seed: number) {
   return () => {
@@ -18,7 +20,7 @@ function seededRandom(seed: number) {
 
 test('119問と全メタデータを保持し、generatedHexが既存エンジンの正解色と一致', () => {
   assert.equal(QUESTIONS.length, 119);
-  assert.equal(QUESTIONS, TRADITIONAL_COLOR_QUESTIONS);
+  assert.deepEqual(ALL_QUESTIONS.slice(0, QUESTIONS.length), TRADITIONAL_COLOR_QUESTIONS);
   assert.equal(new Set(QUESTIONS.map(q => q.id)).size, 119);
   assert.deepEqual(STAGES[0].questionIds, QUESTIONS.map(q => q.id));
   for (const q of QUESTIONS) {

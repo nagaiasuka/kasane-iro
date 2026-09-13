@@ -3,6 +3,9 @@
 半透明の7枚のカードを重ね、お題の色に近づけるスマートフォン向けローカルゲーム。
 Expo Managed Workflow / React Native / TypeScript。縦画面・日本語・ローカル完結。
 
+現在のステージは日本の伝統色119問・四季の色40問・自然の色40問・色彩を学ぶ30問の計229問です。
+各ステージで3 / 5 / 10問または全問を選択できます。
+
 ## 起動
 
 Node.js 22 LTS以上を推奨します。
@@ -41,7 +44,9 @@ SDK 55対応のExpo Goまたは開発ビルドを使用してください。
 | `src/game/scoring.ts` | 完全一致100%、その他は簡易RGB距離 |
 | `src/game/stack.ts` | 配列の追加・削除、ドロップ判定 |
 | `src/data/questions.generated.ts` | 選定・計算済みの伝統色119問と出典管理用メタデータ |
-| `src/data/questions.ts` | 全候補から重複を避けて3 / 5 / 10問をランダム抽選 |
+| `src/data/stage-questions.generated.ts` | 四季・自然・色彩を学ぶの追加110問 |
+| `src/data/stages.ts` | 4ステージの問題ID・説明・代表色 |
+| `src/data/questions.ts` | 229問の統合マスタ、選択ステージ内の抽選 |
 | `src/game/questionColor.ts` | generatedHexを画面表示用RGBへ変換 |
 | `src/types/game.ts` | ゲーム共通型 |
 | `tests/game.test.ts` | 色生成・採点・順序・判定のテスト |
@@ -54,7 +59,7 @@ SDK 55対応のExpo Goまたは開発ビルドを使用してください。
 端の線やラベルは装飾で、採点に含めません。
 
 お題は問題マスタの `generatedHex` を表示し、プレイヤーの色は既存の `generateColor` で計算します。
-全119問について、正解recipeの合成色とgeneratedHexの一致をテストしています。
+全229問について、正解recipeの合成色とgeneratedHexの一致をテストしています。
 正解recipeとカード・順番が完全一致した回答は必ず **100.0%**。
 他の配列はRGBユークリッド距離を最大距離で正規化し、表示上の誤認を防ぐため99.9%を上限にしています。
 これは物理的な減法混色や正式な伝統色の再現モデルではありません。
@@ -367,3 +372,36 @@ package-lock.jsonに本体と必要な間接依存だけを反映しています
 iOS/Android実機での強制終了・起動、バックグラウンド復帰、ネイティブストレージの
 書き込み完了前にOSから終了された場合、容量不足時の挙動は未確認です。
 Webのリロード検証はネイティブ実機での終了・復元確認の代替ではありません。
+
+
+## 初期リリース追加ステージ（2026-09-14）
+
+| ID | ステージ | 問題数 |
+| --- | --- | --- |
+| traditional | 日本の伝統色 | 119 |
+| seasons | 四季の色 | 40 |
+| nature | 自然の色 | 40 |
+| color-learning | 色彩を学ぶ | 30 |
+
+添付データは `src/data/stage-questions.generated.ts` に無変更で収録し、付属説明も
+`src/data/stage-questions-readme.md` に保持しています。既存の伝統色119問は変更していません。
+画面の件数と「全問」の対象数は各ステージのquestionIdsから取得します。
+通常出題は選択ステージ内でrecipe/generatedHexの重複を避け、全問では同色でも全IDを一度ずつ出します。
+ステージを渡さない従来の呼び出しは日本の伝統色を既定にし、全229問の混在を避けています。
+
+`Question.explanation` は任意項目です。色彩を学ぶの解説は、全員の回答がそろった問題結果と
+終了後の結果詳細に表示します。「最後にまとめて表示」ではゲーム終了まで公開しません。
+問題開始・プレイ中・回答保存画面には表示しません。
+
+全問の途中保存は従来どおり1件です。別の全問ゲームを新規開始すると、その進捗で上書きします。
+タイトルの再開ボタンにはステージ名と位置を表示します。旧stageId `traditional-japan` のv1データは
+問題順・回答・位置を保って `traditional` として復元できます。保存形式・キーは維持しています。
+
+検証：`npm install`、`npm run typecheck`、`npm test`（36件）成功。
+`python scripts/stages-smoke.py` で4ステージの選択、3/5/10/全問、17問目の復元、完走後削除、
+解説の公開タイミング、結果詳細、ステージを維持したリプレイを確認しました。
+`python scripts/question-master-smoke.py` ではgeneratedHex表示と、最長の解説が1〜4人・幅320/390pxで
+フッターを押し出さないことを確認しています。`python scripts/progress-smoke.py` の既存フローも成功。
+ブラウザーテストにはPython PlaywrightとChromiumが必要です。完走直前データは通常のsession関数で準備します。
+実機でのドラッグ・バックグラウンド復帰・強制終了直後の保存完了は別途確認が必要です。
+以前のPhase記録と119問のみの記述は、その時点の検証履歴です。

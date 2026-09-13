@@ -1,12 +1,12 @@
 import React from 'react';
 import { Button, Choices, Screen } from '../components/Screen';
 import { GameSettings } from '../types/game';
-export function GameSettingsScreen({ settings, onChange, onNext, stageName, onBack }: {
-  onBack: () => void; stageName: string; settings: GameSettings; onChange: (settings: GameSettings) => void; onNext: () => void;
+export function GameSettingsScreen({ settings, onChange, onNext, stageName, questionTotal, onBack }: {
+  onBack: () => void; stageName: string; questionTotal: number; settings: GameSettings; onChange: (settings: GameSettings) => void; onNext: () => void;
 }) {
   return <Screen title="ゲーム設定" subtitle={stageName}>
     <Choices title="プレイヤー人数" value={settings.playerCount} options={([1, 2, 3, 4] as const).map(value => ({ value, label: `${value}人` }))} onChange={playerCount => onChange({ ...settings, playerCount })} />
-    <Choices title="問題数" value={settings.questionCount} options={([3, 5, 10, 'all'] as const).map(value => ({ value, label: value === 'all' ? '全問' : `${value}問` }))} onChange={questionCount => onChange({ ...settings, questionCount })} />
+    <Choices title="問題数" value={settings.questionCount} options={([3, 5, 10, 'all'] as const).map(value => ({ value, label: value === 'all' ? `全${questionTotal}問` : `${value}問` }))} onChange={questionCount => onChange({ ...settings, questionCount })} />
     <Choices title="制限時間" value={settings.timeLimit} options={([15, 30, 60, null] as const).map(value => ({ value, label: value === null ? '無制限' : `${value}秒` }))} onChange={timeLimit => onChange({ ...settings, timeLimit })} />
     <Choices title="結果表示タイミング" value={settings.resultTiming} options={[{ value: 'question', label: '1問ごとに表示' }, { value: 'final', label: '最後にまとめて表示' }]} onChange={resultTiming => onChange({ ...settings, resultTiming })} />
     <Button label="次へ" onPress={onNext} /><Button label="ステージへ戻る" secondary onPress={onBack} />
