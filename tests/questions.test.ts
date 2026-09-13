@@ -61,6 +61,16 @@ test('3/5/10問をランダムに選び、同一ゲーム内のrecipeとgenerate
   assert.deepEqual(QUESTIONS.map(q => q.id), originalIds);
 });
 
+test('全問モードは119問すべてをランダム順で出題する', () => {
+  const ids = QUESTIONS.map(q => q.id);
+  const first = selectQuestions('all', ids, seededRandom(1));
+  const second = selectQuestions('all', ids, seededRandom(2));
+  assert.equal(first.length, 119);
+  assert.equal(new Set(first.map(q => q.id)).size, 119);
+  assert.deepEqual([...first.map(q => q.id)].sort(), [...ids].sort());
+  assert.notDeepEqual(first.map(q => q.id), second.map(q => q.id));
+});
+
 test('重複色も候補として残し、119問のどれも抽選で先頭になれる', () => {
   const ids = QUESTIONS.map(q => q.id);
   assert.ok(new Set(QUESTIONS.map(q => q.generatedHex)).size < 119);
