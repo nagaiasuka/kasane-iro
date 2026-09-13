@@ -6,10 +6,10 @@ export function colorSimilarity(a: RGB, b: RGB): number {
   return Math.max(0, 100 * (1 - distance / (255 * Math.sqrt(3))));
 }
 
-export function scoreAnswer(recipe: readonly CardId[], correct: readonly CardId[]): Answer {
+export function scoreAnswer(recipe: readonly CardId[], correct: readonly CardId[], target: RGB = generateColor(correct)): Answer {
   const color = generateColor(recipe);
   const exact = recipe.length === correct.length && recipe.every((id, i) => id === correct[i]);
   // 表示の丸めによる誤った100.0%を避け、完全一致だけに100%を予約。
-  const score = exact ? 100 : Math.min(99.9, colorSimilarity(color, generateColor(correct)));
+  const score = exact ? 100 : Math.min(99.9, colorSimilarity(color, target));
   return { recipe: [...recipe], color, score };
 }

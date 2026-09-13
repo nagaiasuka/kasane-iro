@@ -172,3 +172,23 @@ test('正解と他人の回答は結果公開時のみ表示可能、finalでは
     assert.equal(canRevealAnswer(s, 'unknown'), false);
   }
 });
+
+
+test('全119問を1〜4人・両結果表示・制限時間ありなしで完走し再プレイできる', () => {
+  for (const playerCount of [1, 2, 3, 4] as const) for (const resultTiming of ['question', 'final'] as const)
+    for (const timeLimit of [null, 15] as const) {
+      let s = createSession({ ...DEFAULT_SETTINGS, questionCount: 'all', playerCount, resultTiming, timeLimit }, []);
+      const order = s.questions.map(q => q.id);
+      while (s.gameStatus !== 'finished') {
+        s = continueAfterAnswer(answer(startQuestion(ready(s)), timeLimit !== null));
+        if (s.gameStatus === 'questionResult') s = nextQuestion(s);
+      }
+      assert.equal(s.answers.length, 119 * playerCount);
+      assert.deepEqual(s.questions.map(q => q.id), order);
+      assert.ok(s.answers.every(a => a.score === (timeLimit === null ? 100 : 0)));
+      const replay = createSession(s.settings, s.players.map(p => p.name));
+      assert.equal(replay.questions.length, 119);
+      assert.equal(replay.answers.length, 0);
+      assert.deepEqual(replay.players, s.players);
+    }
+});

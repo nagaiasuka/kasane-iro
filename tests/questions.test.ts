@@ -96,3 +96,13 @@ test('お題はgeneratedHexを参照し、sourceHexとsourceSimilarityは表示�
     assert.deepEqual(updated.answers, original.answers);
   }
 });
+
+
+test('採点もgeneratedHexをtargetに使い、別recipeは同色でも99.9%まで', () => {
+  const s = startQuestion(createSession(DEFAULT_SETTINGS, []));
+  const q = { ...s.currentQuestion, recipe: ['M50'] as const, generatedHex: '#70C6E0' as const };
+  const changed = { ...s, currentQuestion: q };
+  const answer = saveAnswer(changed, s.players[0].id, q.id, ['C70']).answers[0];
+  assert.equal(answer.score, 99.9);
+  assert.equal(saveAnswer(changed, s.players[0].id, q.id, q.recipe).answers[0].score, 100);
+});

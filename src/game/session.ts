@@ -1,6 +1,7 @@
 import { selectQuestions } from '../data/questions';
 import { CardId, GameSession, GameSettings } from '../types/game';
 import { scoreAnswer } from './scoring';
+import { questionColor } from './questionColor';
 
 export const DEFAULT_SETTINGS: GameSettings = {
   playerCount: 1, questionCount: 3, timeLimit: null, resultTiming: 'question',
@@ -38,7 +39,7 @@ export function nextQuestion(session: GameSession): GameSession {
 export function saveAnswer(session: GameSession, playerId: string, questionId: string, recipe: readonly CardId[], timedOut = false): GameSession {
   if (session.gameStatus !== 'playing' || session.players[session.currentPlayerIndex].id !== playerId ||
       session.currentQuestion.id !== questionId || session.answers.some(a => a.playerId === playerId && a.questionId === questionId)) return session;
-  const scored = scoreAnswer(recipe, session.currentQuestion.recipe);
+  const scored = scoreAnswer(recipe, session.currentQuestion.recipe, questionColor(session.currentQuestion));
   return { ...session, gameStatus: 'answerSaved', answers: [...session.answers,
     { ...scored, score: recipe.length ? scored.score : 0, playerId, questionId, timedOut }] };
 }
