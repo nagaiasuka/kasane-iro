@@ -47,8 +47,15 @@ export default function App() {
 
   async function exitGame() {
     if (session?.settings.questionCount === 'all') {
-      try { await clearAllProgress(); } catch { /* 終了自体は妨げない */ }
-      setSavedProgress(null);
+      if (session.gameStatus === 'finished') {
+        try { await clearAllProgress(); } catch { /* 終了自体は妨げない */ }
+        setSavedProgress(null);
+      } else {
+        try {
+          await saveAllProgress(stage.id, session);
+          setSavedProgress(await loadAllProgress());
+        } catch { /* タイトルへ戻る操作は妨げない */ }
+      }
     }
     setSession(null);
     setDetailIndex(null);
@@ -102,6 +109,6 @@ export default function App() {
     {screen === 'stages' && <StageSelectScreen onSelect={selected => { setStage(selected); setScreen('settings'); }} onBack={() => setScreen('title')} />}
     {screen === 'settings' && <GameSettingsScreen onBack={() => setScreen('stages')} stageName={stage.name} settings={settings} onChange={setSettings} onNext={() => setScreen('players')} />}
     {screen === 'players' && <PlayerSetupScreen count={settings.playerCount} onStart={start} onBack={() => setScreen('settings')} />}
-    {screen === 'game' && <GameExit enabled={session?.gameStatus !== 'finished'} onExit={exitGame}>{game()}</GameExit>}
+    {screen === 'game' && <GameExit enabled={session?.gameStatus !== 'finished'} preserveProgress={session?.settings.questionCount === 'all'} onExit={exitGame}>{game()}</GameExit>}
   </SafeAreaProvider>;
 }
