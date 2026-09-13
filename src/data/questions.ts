@@ -6,7 +6,7 @@ export const QUESTION = QUESTIONS[0];
 
 // Shuffle before filtering so all traditional colors, including duplicates, remain eligible.
 export function selectQuestions(
-  count: number,
+  count: number | 'all',
   questionIds: readonly string[] = QUESTIONS.map(q => q.id),
   random: () => number = Math.random,
 ): readonly Question[] {
@@ -15,11 +15,16 @@ export function selectQuestions(
     if (!question) throw new Error(`不明な問題: ${id}`);
     return question;
   });
-  if (!Number.isInteger(count) || count < 1 || count > available.length) throw new Error('問題数が不正です');
   for (let i = available.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [available[i], available[j]] = [available[j], available[i]];
   }
+
+  // 全問モードは問題マスタにある色をすべて出題する。
+  // 同じrecipe/generatedHexを持つ別の伝統色も「別問題」として残す。
+  if (count === 'all') return available;
+
+  if (!Number.isInteger(count) || count < 1 || count > available.length) throw new Error('問題数が不正です');
   const recipes = new Set<string>();
   const colors = new Set<string>();
   const selected: Question[] = [];
