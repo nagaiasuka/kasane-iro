@@ -22,7 +22,7 @@ export function QuestionResultScreen({ session, onNext }: { session: GameSession
         <View style={styles.row}><Text style={ui.brand}>かさねいろ</Text><QuitButton /></View>
         <View style={styles.row}>
           <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-          <Text style={styles.question}>{session.currentQuestion.name}<Text style={styles.reading}>　{session.currentQuestion.reading}</Text></Text>
+          <Text style={styles.question}>{session.currentQuestion.name}<Text style={styles.reading}>　{session.currentQuestion.romanized}</Text></Text>
         </View>
       </View>
       <ResultComparison session={session} question={session.currentQuestion} fill />

@@ -1,27 +1,36 @@
 import { Question } from '../types/game';
+import { TRADITIONAL_COLOR_QUESTIONS } from './questions.generated';
 
-// ゲーム進行確認用データ。伝統色の標準値を再現した本番レシピではない。
-export const QUESTIONS: readonly Question[] = [
-  { id: 'moegi', name: '萌黄', reading: 'もえぎ', recipe: ['C70', 'Y70'] },
-  { id: 'fuji', name: '藤', reading: 'ふじ', recipe: ['M50', 'C50'] },
-  { id: 'koubai', name: '紅梅', reading: 'こうばい', recipe: ['Y50', 'M50'] },
-  { id: 'mizu', name: '水', reading: 'みず', recipe: ['C50'] },
-  { id: 'koke', name: '苔', reading: 'こけ', recipe: ['C70', 'Y70', 'K25'] },
-  { id: 'sakura', name: '桜', reading: 'さくら', recipe: ['M50'] },
-  { id: 'yamabuki', name: '山吹', reading: 'やまぶき', recipe: ['M50', 'Y70'] },
-  { id: 'sumire', name: '菫', reading: 'すみれ', recipe: ['C70', 'M70'] },
-  { id: 'wakaba', name: '若葉', reading: 'わかば', recipe: ['C50', 'Y50'] },
-  { id: 'nezumi', name: '鼠', reading: 'ねずみ', recipe: ['K25'] },
-];
+export const QUESTIONS: readonly Question[] = TRADITIONAL_COLOR_QUESTIONS;
 export const QUESTION = QUESTIONS[0];
 
-// 将来はこの選択関数でシャッフル等に差し替えられる。
-export function selectQuestions(count: number, questionIds: readonly string[] = QUESTIONS.map(q => q.id)): readonly Question[] {
+// Shuffle before filtering so all traditional colors, including duplicates, remain eligible.
+export function selectQuestions(
+  count: number,
+  questionIds: readonly string[] = QUESTIONS.map(q => q.id),
+  random: () => number = Math.random,
+): readonly Question[] {
   const available = questionIds.map(id => {
     const question = QUESTIONS.find(q => q.id === id);
     if (!question) throw new Error(`不明な問題: ${id}`);
     return question;
   });
-  if (count > available.length || count < 1) throw new Error('問題数が不正です');
-  return available.slice(0, count);
+  if (!Number.isInteger(count) || count < 1 || count > available.length) throw new Error('問題数が不正です');
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
+  }
+  const recipes = new Set<string>();
+  const colors = new Set<string>();
+  const selected: Question[] = [];
+  for (const question of available) {
+    const recipe = question.recipe.join(',');
+    const color = question.generatedHex.toUpperCase();
+    if (recipes.has(recipe) || colors.has(color)) continue;
+    selected.push(question);
+    recipes.add(recipe);
+    colors.add(color);
+    if (selected.length === count) return selected;
+  }
+  throw new Error('重複しない問題が不足しています');
 }

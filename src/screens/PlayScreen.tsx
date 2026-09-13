@@ -6,6 +6,7 @@ import { ColorCard } from '../components/ColorCard';
 import { PlayField } from '../components/PlayField';
 import { CARD_IDS, CARD_LABELS } from '../game/cards';
 import { generateColor, rgbStyle } from '../game/colorEngine';
+import { questionColor } from '../game/questionColor';
 import { remainingSeconds } from '../game/session';
 import { contains, moveCard, Point, Rect } from '../game/stack';
 import { CardId, Question } from '../types/game';
@@ -75,8 +76,8 @@ export function PlayScreen({ question, playerName, questionNumber, questionCount
         </View>
 
         <View style={[styles.challenge, compact && { paddingVertical: 8 }]}>
-          <View style={styles.targetInfo}><Text style={styles.eyebrow}>お題の色</Text><Text style={styles.colorName}>{question.name}<Text style={styles.reading}>  {question.reading}</Text></Text><Text style={styles.note}>この色に、近づけよう。</Text></View>
-          <View style={styles.sampleColumn}><View testID="target-color" style={[styles.swatch, { backgroundColor: rgbStyle(generateColor(question.recipe)) }]} /><Text style={styles.sampleLabel}>お題</Text></View>
+          <View style={styles.targetInfo}><Text style={styles.eyebrow}>お題の色</Text><Text style={styles.colorName}>{question.name}<Text style={styles.reading}>  {question.romanized}</Text></Text><Text style={styles.note}>この色に、近づけよう。</Text></View>
+          <View style={styles.sampleColumn}><View testID="target-color" style={[styles.swatch, { backgroundColor: rgbStyle(questionColor(question)) }]} /><Text style={styles.sampleLabel}>お題</Text></View>
           <View style={styles.sampleColumn}><View testID="current-color" style={[styles.swatch, { backgroundColor: rgbStyle(generateColor(stack)) }]} /><Text style={styles.sampleLabel}>いまの色</Text></View>
         </View>
 

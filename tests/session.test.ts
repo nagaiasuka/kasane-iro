@@ -136,15 +136,17 @@ test('問題開始・回答完了の区切りを維持し無効な次へ操作�
   assert.equal(continueAfterAnswer(result), result);
 });
 
-test('ステージの問題ID順で出題し、設定・名前を維持して再プレイ', () => {
-  const ids = ['mizu', 'koke', 'moegi'];
+test('ステージの候補から出題し、設定・名前を維持して再プレイ', () => {
+  const ids = ['mizu', 'fuji', 'nadeshiko'];
   const s = createSession(DEFAULT_SETTINGS, ['飛鳥'], ids);
-  assert.deepEqual(s.questions.map(q => q.id), ids);
+  assert.deepEqual(s.questions.map(q => q.id).sort(), [...ids].sort());
   const replay = createSession(s.settings, s.players.map(p => p.name), ids);
-  assert.deepEqual(replay.questions, s.questions);
+  assert.deepEqual(replay.questions.map(q => q.id).sort(), [...ids].sort());
+  assert.deepEqual(replay.settings, s.settings);
+  assert.deepEqual(replay.players, s.players);
   assert.equal(replay.gameStatus, 'questionIntro');
-  assert.throws(() => createSession(DEFAULT_SETTINGS, [], ['missing', 'koke', 'moegi']));
-  assert.throws(() => createSession(DEFAULT_SETTINGS, [], ['moegi']));
+  assert.throws(() => createSession(DEFAULT_SETTINGS, [], ['missing', 'fuji', 'mizu']));
+  assert.throws(() => createSession(DEFAULT_SETTINGS, [], ['mizu']));
 });
 
 test('正解と他人の回答は結果公開時のみ表示可能、finalでは終了まで非公開', () => {

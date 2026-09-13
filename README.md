@@ -40,7 +40,9 @@ SDK 55対応のExpo Goまたは開発ビルドを使用してください。
 | `src/game/colorEngine.ts` | 白地への順序付き合成、色の表示形式 |
 | `src/game/scoring.ts` | 完全一致100%、その他は簡易RGB距離 |
 | `src/game/stack.ts` | 配列の追加・削除、ドロップ判定 |
-| `src/data/questions.ts` | ゲーム進行確認用の仮問題10問 |
+| `src/data/questions.generated.ts` | 選定・計算済みの伝統色119問と出典管理用メタデータ |
+| `src/data/questions.ts` | 全候補から重複を避けて3 / 5 / 10問をランダム抽選 |
+| `src/game/questionColor.ts` | generatedHexを画面表示用RGBへ変換 |
 | `src/types/game.ts` | ゲーム共通型 |
 | `tests/game.test.ts` | 色生成・採点・順序・判定のテスト |
 
@@ -51,8 +53,9 @@ SDK 55対応のExpo Goまたは開発ビルドを使用してください。
 中央のカードが重なった無地部分と「いまの色」は白背景での同じsource-over合成です。
 端の線やラベルは装飾で、採点に含めません。
 
-お題もプレイヤーの色も同じ `generateColor` で計算します。
-仮問題は **C70 → Y70** で必ず **100.0%**。
+お題は問題マスタの `generatedHex` を表示し、プレイヤーの色は既存の `generateColor` で計算します。
+全119問について、正解recipeの合成色とgeneratedHexの一致をテストしています。
+正解recipeとカード・順番が完全一致した回答は必ず **100.0%**。
 他の配列はRGBユークリッド距離を最大距離で正規化し、表示上の誤認を防ぐため99.9%を上限にしています。
 これは物理的な減法混色や正式な伝統色の再現モデルではありません。
 実物との校正やLab / Delta Eの導入は、独立したエンジンと採点関数で対応できます。
@@ -121,8 +124,9 @@ Phase 3の検証結果と実機確認ポイントは下記を参照してくだ�
 再プレイは同じ設定・名前で回答履歴を空にして開始します。タイトルへ戻るとセッションを破棄します。
 アプリ再起動やWebリロードで途中経過は失われます。
 
-問題は `selectQuestions` で先頭から設定数を選択。将来のランダム化はこの関数で対応できます。
-10問すべてゲーム進行確認用の仮レシピであり、本番色の精度調整は行っていません。
+問題は `selectQuestions` で119問から設定数をランダム抽選します。
+同じrecipeまたはgeneratedHexを持つ問題は同一ゲーム内で重複させません。
+同じ設定での再プレイでも新しく抽選します。
 既存の `ColorCard`、`PlayField`、`colorEngine`、`scoring`、`stack` は変更していません。
 
 ### 実機確認ポイント
@@ -315,3 +319,25 @@ KASANE_WEB_URL=http://localhost:8094 python scripts/result-comparison-smoke.py
 Phase 4.2追加修正の検証結果：`npm test` は17件成功、`npm run typecheck` は成功。
 上記比較用Webテストは成功し、通常回答・全員7枚回答とも1〜4人×4サイズでスクロールなしを確認しました。
 問題詳細、回答順、複数人とfinal設定の公開タイミング、空回答の時間切れも成功し、ブラウザー実行時エラーはありませんでした。
+
+
+## 本番問題マスタ（119問）
+
+提供された `questions.generated.ts` を変更せず `src/data/` に収録しています。
+全119色を候補に残したままシャッフルし、recipe（下→上）またはgeneratedHexが
+既出の問題を除いて3 / 5 / 10問を選びます。候補が不足する場合はエラーにします。
+重複する伝統色をマスタから削除することはありません。
+
+`id`・`name`・`romanized`・`recipe`・`sourceHex`・`generatedHex`・`sourceSimilarity` を保持します。
+画面には伝統色名と提供データのローマ字表記を表示します。
+sourceHexは出典管理用、sourceSimilarityは元色への近さを表す開発用データで、
+プレイヤーの得点には使いません。カードのRGBA・合成・採点ロジックは変更していません。
+ゲーム中の探索・外部通信・データ生成はありません。
+
+検証：`npm test`（22件）と `npm run typecheck`。
+`python scripts/question-master-smoke.py` で問題開始・プレイ・1〜4人の結果表示が
+マスタのgeneratedHexを使うこととプレイヤー配置順を確認できます。
+Python PlaywrightとChromiumが必要です。
+既存の `web-smoke.py` と `result-comparison-smoke.py` のゲーム操作部分は
+旧固定問題を前提とした検証を含むため、新しいランダム出題には未対応です。
+過去のPhase検証記録は当時のデータ・挙動を記載しています。

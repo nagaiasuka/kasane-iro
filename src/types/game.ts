@@ -1,7 +1,11 @@
 export type CardId = 'C70' | 'C50' | 'M70' | 'M50' | 'Y70' | 'Y50' | 'K25';
 export type RGB = Readonly<{ r: number; g: number; b: number }>;
 export type CardDefinition = Readonly<{ id: CardId; color: RGB; opacity: number }>;
-export type Question = Readonly<{ id: string; name: string; reading: string; recipe: readonly CardId[] }>;
+export type Question = Readonly<{
+  id: string; name: string; romanized: string;
+  sourceHex: `#${string}`; generatedHex: `#${string}`; sourceSimilarity: number;
+  recipe: readonly CardId[]; // bottom -> top
+}>;
 export type Answer = Readonly<{ recipe: readonly CardId[]; color: RGB; score: number }>;
 
 export type GameSettings = Readonly<{

@@ -7,7 +7,7 @@ import { contains, moveCard } from '../src/game/stack';
 import { QUESTION } from '../src/data/questions';
 import { CardId } from '../src/types/game';
 
-test('仮問題の正解レシピは必ず100.0%', () => {
+test('問題の正解レシピは必ず100.0%', () => {
   const answer = scoreAnswer(QUESTION.recipe, QUESTION.recipe);
   assert.equal(answer.score.toFixed(1), '100.0');
   assert.deepEqual(answer.color, generateColor(QUESTION.recipe));
@@ -31,7 +31,7 @@ test('白地に順番通り合成し、順序の違いを保持する', () => {
   assert.deepEqual(generateColor([]), PAPER);
   assert.deepEqual(generateColor(['C70']), { r: 112, g: 198, b: 224 });
   assert.notDeepEqual(generateColor(['C70', 'Y70']), generateColor(['Y70', 'C70']));
-  assert.ok(scoreAnswer(['Y70', 'C70'], QUESTION.recipe).score < 100);
+  assert.ok(scoreAnswer(['Y70', 'C70'], ['C70', 'Y70']).score < 100);
   assert.equal(colorSimilarity(PAPER, { r: 0, g: 0, b: 0 }), 0);
 });
 
@@ -49,7 +49,7 @@ test('追加、重複防止、中段の返却、再追加、無効ドロップ',
 
 test('回答スナップショットは以後の操作に影響されない', () => {
   const stack: CardId[] = ['C70', 'Y70'];
-  const answer = scoreAnswer(stack, QUESTION.recipe);
+  const answer = scoreAnswer(stack, ['C70', 'Y70']);
   stack.pop();
   assert.deepEqual(answer.recipe, ['C70', 'Y70']);
   assert.equal(answer.score, 100);

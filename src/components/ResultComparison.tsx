@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { canRevealAnswer } from '../game/session';
-import { generateColor } from '../game/colorEngine';
+import { questionColor } from '../game/questionColor';
 import { GameSession, Question } from '../types/game';
 import { RecipeDisplay } from './RecipeDisplay';
 import { PlayerResult } from './PlayerResult';
@@ -24,7 +24,7 @@ export function ResultComparison({ session, question, detailed = false, fill = f
   });
   const stackSlots = Math.max(question.recipe.length, ...answers.map(({ answer }) => answer.recipe.length));
   if (fill) return <AdaptiveComparison session={session} question={question} stackSlots={stackSlots} />;
-  const canonical = <RecipeDisplay title="正解" recipe={question.recipe} color={generateColor(question.recipe)} score={100}
+  const canonical = <RecipeDisplay title="正解" recipe={question.recipe} color={questionColor(question)} score={100}
     testID="canonical-answer" recipeTestID="answer-recipe" stackSlots={stackSlots} size={size}
     banner={count === 4 && !detailed && columns > 1} />;
   const players = answers.map(({ player, answer }) => <PlayerResult key={player.id} player={player} answer={answer}
@@ -34,7 +34,7 @@ export function ResultComparison({ session, question, detailed = false, fill = f
   const rows = Array.from({ length: Math.ceil(cells.length / columns) }, (_, i) => cells.slice(i * columns, (i + 1) * columns));
 
   return <View testID="result-comparison" style={styles.comparison}>
-    <Text style={styles.question}>{question.name}<Text style={styles.reading}>　{question.reading}</Text></Text>
+    <Text style={styles.question}>{question.name}<Text style={styles.reading}>　{question.romanized}</Text></Text>
     {banner && canonical}
     {rows.map((row, i) => <View key={i} testID={`result-row-${i}`} style={styles.row}>
       {row.map((cell, j) => <View key={j} style={styles.cell}>{cell}</View>)}
@@ -52,7 +52,7 @@ function AdaptiveComparison({ session, question, stackSlots }: { session: GameSe
     const answer = session.answers.find(a => a.questionId === question.id && a.playerId === player.id);
     return answer ? [{ player, answer }] : [];
   });
-  const canonical = <AdaptiveRecipeDisplay title="正解" recipe={question.recipe} color={generateColor(question.recipe)} score={100}
+  const canonical = <AdaptiveRecipeDisplay title="正解" recipe={question.recipe} color={questionColor(question)} score={100}
     testID="canonical-answer" recipeTestID="answer-recipe" stackSlots={stackSlots} layout={layout.canonical} />;
   const players = answers.map(({ player, answer }) => <AdaptiveRecipeDisplay key={player.id} title={player.name}
     recipe={answer.recipe} color={answer.color} score={answer.score} timedOut={answer.timedOut}
