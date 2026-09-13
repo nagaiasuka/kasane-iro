@@ -10,7 +10,7 @@ export type Answer = Readonly<{ recipe: readonly CardId[]; color: RGB; score: nu
 
 export type GameSettings = Readonly<{
   playerCount: 1 | 2 | 3 | 4;
-  questionCount: 3 | 5 | 10;
+  questionCount: 3 | 5 | 10 | 'all';
   timeLimit: 15 | 30 | 60 | null;
   resultTiming: 'question' | 'final';
 }>;
