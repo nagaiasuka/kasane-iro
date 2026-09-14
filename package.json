@@ -5,13 +5,14 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
+    "android": "expo run:android --variant release --no-bundler",
     "ios": "expo run:ios --configuration Release --no-bundler",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "ios:go": "expo start --ios --go",
-    "postinstall": "node scripts/fix-ios-unicode-path.cjs"
+    "postinstall": "node scripts/fix-ios-unicode-path.cjs",
+    "android:go": "expo start --android --go"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

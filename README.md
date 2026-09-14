@@ -32,9 +32,12 @@ React Native 0.83のローカル依存ファイルURLの不具合に対応する
 `postinstall` で日本語パスをURLエンコードする限定的な修正を適用します。
 依存更新時は `scripts/fix-ios-unicode-path.cjs` の必要性を再確認してください。
 開発クライアントを使う場合は `npx expo run:ios` でビルド・起動できます。
-Androidエミュレーターは `npm run android` で開発ビルドを開きます。
-未インストールなら `npx expo run:android` で作成するか、
-Expo Goでの確認には `npm run android -- --go` を使用してください。
+AndroidはAndroid StudioのDevice Managerで端末を起動し、
+`npm run android` でサーバー不要のRelease APKをビルド・インストールします。
+Android SDKとJDK 17以上が必要です。SDKを検出できない場合は
+`ANDROID_HOME` をSDKの場所（macOS標準では `$HOME/Library/Android/sdk`）に設定してください。
+Expo Goでの確認には `npm run android:go` を使用してください。
+ローカルのRelease APKは動作確認用の署名です。ストア提出にはEASのproductionビルドを使用してください。
 
 ## 初回リリース（1.0.0）
 
