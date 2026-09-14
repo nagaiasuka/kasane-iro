@@ -15,17 +15,26 @@ npm ci
 npm start
 ```
 
-Expo CLIのQRコードを対応するExpo Goで読み込みます。iOSシミュレーターは
-`npm run ios`（macOS / Xcodeが必要）、Androidエミュレーターは
-`npm run android`（Android SDKが必要）。同じWi-Fi環境で接続してください。
-SDK 55対応のExpo Goまたは開発ビルドを使用してください。
+実機のExpo Goで確認する場合は `npx expo start --go` を実行し、
+同じWi-Fi上のスマートフォンでQRコードを読み込みます。SDK 55対応のExpo Goが必要です。
 ブラウザーでの補助確認には `npm run web` を使用できます。
 
-このプロジェクトは `expo-dev-client` を含むため、通常の起動コマンドは
-インストール済みの開発ビルドを探します。Expo Goで確認する場合は
-`npx expo start --go`、iOSシミュレーターなら `npm run ios -- --go` を使用してください。
-専用の開発アプリは、初回に `npx expo run:ios`（Xcode必須）でビルド・インストールし、
-以降は `npm run ios` で起動できます。
+iOSシミュレーターに正式アイコン付きの独立したアプリをインストールする場合は
+`npm run ios` を実行してください（macOS / Xcodeが必要）。
+Releaseビルドを作るため、初回はCocoaPodsなどの準備に時間がかかります。
+インストール後は開発サーバーなしでホーム画面の「かさねいろ」から起動できます。
+コードや画像を変更した場合は再度 `npm run ios` でビルドしてください。
+Expo Goをシミュレーターで開く場合は `npm run ios:go` を使用します。
+
+`ios/` と `android/` はExpo Prebuildの生成物としてGit管理から除外しています。
+ネイティブ設定は `app.json` とプラグインで管理してください。
+React Native 0.83のローカル依存ファイルURLの不具合に対応するため、
+`postinstall` で日本語パスをURLエンコードする限定的な修正を適用します。
+依存更新時は `scripts/fix-ios-unicode-path.cjs` の必要性を再確認してください。
+開発クライアントを使う場合は `npx expo run:ios` でビルド・起動できます。
+Androidエミュレーターは `npm run android` で開発ビルドを開きます。
+未インストールなら `npx expo run:android` で作成するか、
+Expo Goでの確認には `npm run android -- --go` を使用してください。
 
 ## 初回リリース（1.0.0）
 
