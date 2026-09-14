@@ -67,8 +67,8 @@ export function ColorCard(props: Props) {
         borderColor: dragging ? '#314940' : 'rgba(38, 56, 48, 0.24)',
       }]}
     >
-      {props.showLabel !== false && <Text style={styles.label}>{CARD_LABELS[props.id]}</Text>}
-      {!props.placed && <Text style={styles.mark}>かさねいろ</Text>}
+      {props.showLabel !== false && <Text selectable={false} style={styles.label}>{CARD_LABELS[props.id]}</Text>}
+      {!props.placed && <Text selectable={false} style={styles.mark}>かさねいろ</Text>}
     </Animated.View>
   );
 }

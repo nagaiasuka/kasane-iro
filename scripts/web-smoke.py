@@ -1,6 +1,15 @@
 # Optional browser regression check: run Expo on port 8087; requires Python Playwright + Chromium.
 import os
+import json
+import subprocess
+import re
 from playwright.sync_api import sync_playwright
+
+questions = json.loads(subprocess.check_output([
+    'node', '--import', 'tsx', '-e',
+    "console.log(JSON.stringify(require('./src/data/questions.generated').TRADITIONAL_COLOR_QUESTIONS))"
+], text=True))
+recipes = {q['name']: q['recipe'] for q in questions}
 
 with sync_playwright() as p:
     browser = p.chromium.launch()
@@ -84,7 +93,12 @@ with sync_playwright() as p:
         box=page.get_by_role('button',name='この色で回答する').bounding_box()
         assert box['y']+box['height']<=height,(width,box)
     page.set_viewport_size({'width':390,'height':844})
-    for i,recipe in enumerate([['C70','Y70'],['M50','C50'],['Y50','M50']]):
+    answered = []
+    for i in range(3):
+        # Match the target's displayed Japanese name, including its reading.
+        name = page.get_by_test_id('target-color').locator('..').locator('..').inner_text().split('お題の色')[1].strip().split()[0]
+        recipe = recipes[name]
+        answered.append((name, recipe))
         empty_board()
         for card in recipe: drag(card)
         click('この色で回答する')
@@ -98,11 +112,11 @@ with sync_playwright() as p:
         if i<2: intro()
     page.get_by_text('最終結果',exact=True).wait_for()
     assert page.get_by_text('100.0%',exact=True).count()==1
-    click('第2問 藤　詳細を見る')
+    click(f'第2問 {answered[1][0]}　詳細を見る')
     page.get_by_text('第2問の詳細',exact=True).wait_for()
     assert page.get_by_text('100.0%',exact=True).count()==2
-    assert '赤・淡' in page.get_by_test_id('answer-recipe').inner_text()
-    assert '青・淡' in page.get_by_test_id('answer-recipe').inner_text()
+    for card in answered[1][1]:
+        assert labels[card] in page.get_by_test_id('answer-recipe').inner_text()
     click('最終結果へ戻る')
     page.screenshot(path='/tmp/kasane-iro-phase4-final.png',full_page=True)
     click('もう一度遊ぶ'); intro()
@@ -136,8 +150,8 @@ with sync_playwright() as p:
         page.wait_for_timeout(1000)
         saved('最終結果を見る' if q==2 else '次の問題へ')
     page.get_by_text('最終結果',exact=True).wait_for()
-    for q,name in enumerate(['萌黄','藤','紅梅']):
-        click(f'第{q+1}問 {name}　詳細を見る')
+    for q in range(3):
+        page.get_by_role('button', name=re.compile(f'^第{q+1}問 .*詳細を見る$')).click()
         assert page.get_by_text('時間切れ',exact=False).count()==1
         if q!=1: assert page.get_by_text('空回答 ・ 時間切れ',exact=True).count()==1
         click('最終結果へ戻る')
@@ -149,7 +163,8 @@ with sync_playwright() as p:
         drag('C50'); click('この色で回答する'); saved('最終結果を見る' if q==9 else '次の問題へ')
     page.get_by_text('最終結果',exact=True).wait_for()
     button_names=page.get_by_role('button').all_text_contents()
-    assert button_names.index('第10問 鼠　詳細を見る') < button_names.index('もう一度遊ぶ')
+    last_detail = next(name for name in button_names if name.startswith('第10問 ') and name.endswith('詳細を見る'))
+    assert button_names.index(last_detail) < button_names.index('もう一度遊ぶ')
     assert not errors,errors
     print('PASS: how-to/stage, intro/saved boundaries, result details, solo, 2-player privacy/tie/replay, 10 questions, final-only, empty/nonempty timeout, card regressions, small viewports, no browser errors')
     browser.close()

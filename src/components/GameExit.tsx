@@ -1,5 +1,5 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { BackHandler, Platform, Modal, Pressable, Text, View } from 'react-native';
 
 const ExitContext = createContext<(() => void) | undefined>(undefined);
 export function QuitButton() {
@@ -15,6 +15,14 @@ export function GameExit({ children, onExit, enabled, preserveProgress = false }
   preserveProgress?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!enabled || Platform.OS !== 'android') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setVisible(true);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [enabled]);
   return <ExitContext.Provider value={enabled ? () => setVisible(true) : undefined}>
     {children}
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>

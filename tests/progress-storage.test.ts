@@ -129,3 +129,22 @@ test('旧traditional-japanの保存は問題順と回答を維持してtradition
   assert.equal(loaded?.stageId, 'traditional');
   assert.deepEqual(loaded?.session, s);
 });
+
+test('未知の保存バージョン・stageId・改変問題・不正回答recipeを削除する', async () => {
+  const session = step(step(createSession({ ...DEFAULT_SETTINGS, questionCount: 'all' }, [])));
+  const valid = { version: 1, stageId: stage, savedAt: new Date().toISOString(), session };
+  const invalid = [
+    { ...valid, version: 0 },
+    { ...valid, stageId: 'missing-stage' },
+    { ...valid, session: { ...session, questions: session.questions.slice(1) } },
+    { ...valid, session: { ...session, questions: session.questions.map((q, i) => i ? q : { ...q, generatedHex: '#000000' }) } },
+    ...[['unknown'], ['C70', 'C70'], null, []].map(recipe => ({
+      ...valid, session: { ...session, answers: [{ ...session.answers[0], recipe }] },
+    })),
+  ];
+  for (const value of invalid) {
+    await api.storage.setItem(key, JSON.stringify(value));
+    assert.equal(await api.loadAllProgress(), null);
+    assert.equal(await api.storage.getItem(key), null);
+  }
+});

@@ -21,6 +21,61 @@ Expo CLIのQRコードを対応するExpo Goで読み込みます。iOSシミュ
 SDK 55対応のExpo Goまたは開発ビルドを使用してください。
 ブラウザーでの補助確認には `npm run web` を使用できます。
 
+このプロジェクトは `expo-dev-client` を含むため、通常の起動コマンドは
+インストール済みの開発ビルドを探します。Expo Goで確認する場合は
+`npx expo start --go`、iOSシミュレーターなら `npm run ios -- --go` を使用してください。
+専用の開発アプリは、初回に `npx expo run:ios`（Xcode必須）でビルド・インストールし、
+以降は `npm run ios` で起動できます。
+
+## 初回リリース（1.0.0）
+
+- App version: `1.0.0`
+- iOS bundleIdentifier: `com.nagaiasuka.kasaneiro` / buildNumber: `1` / iPhoneのみ
+- Android package: `com.nagaiasuka.kasaneiro` / versionCode: `1`
+- 縦画面固定、ライト表示、背景色 `#F7F4EC`
+- アイコン: `assets/icon.png`
+- Android adaptive icon: `assets/adaptive-icon.png`
+- Splash: `assets/splash.png`
+
+```sh
+# 開発
+npm install
+npm start
+# 型チェック・テスト
+npm run typecheck
+npm test
+# Expo起動・リリース前の検証
+npx expo start
+npx expo-doctor
+npx expo export --platform all
+# 内部配布 / ストア提出用ビルド
+npx eas build --profile preview
+npx eas build --profile production
+```
+
+`eas.json` は development（開発クライアント）、preview（内部配布、Android APK）、
+production（ストア配布、Android AAB）を定義しています。
+初回はExpoアカウントでログインし、EASプロジェクトを関連付け、
+iOS / Androidの署名情報を設定してください。iOSの内部配布には端末登録が必要です。
+ストア上のアプリ登録、スクリーンショット・説明・プライバシー申告と提出は別途行います。
+ビルドの再提出時はbuildNumber / versionCodeを増やしてください。
+従来のAndroid設定 `com.kasaneiro.app` は指定されたIDに統一しました。
+旧IDのアプリを配布済みの場合、新IDではそのアプリの更新になりません。
+
+スプラッシュは[Expo SDK 55の推奨プラグイン形式](https://docs.expo.dev/versions/v55.0.0/sdk/splash-screen/)を使用。
+提供画像は無加工です。画像寸法とマスクの注意点は [assets/README.md](assets/README.md) を参照してください。
+不要なカメラ・位置情報・マイク・通知・連絡先権限は追加していません。
+
+Androidの戻る操作は準備画面では親画面、ゲーム中は既存の終了確認、
+結果詳細では最終結果、最終結果ではタイトルへ戻ります。タイトルではOSに終了を委ねます。
+バックグラウンド復帰では締切時刻から残り時間を再計算します。
+全問モードは既存どおり問題順・回答・現在位置・ステージを保存し、
+アプリ再起動時の未確定問題は開始前から再開します。
+
+提出前に実機のpreview / productionビルドで、アイコンの各マスク、起動画面、
+Android戻るボタン・ジェスチャー、Safe Areaとナビゲーション領域、
+バックグラウンド復帰と全問再開を確認してください。
+
 ## 操作
 
 - 手札のカードを中央へドラッグ。カードの中心が点線内に入ると追加されます。

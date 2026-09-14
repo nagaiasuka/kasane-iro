@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StatusBar } from 'react-native';
+import { BackHandler, Platform, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PlayScreen } from './src/screens/PlayScreen';
 import { TitleScreen } from './src/screens/TitleScreen';
@@ -19,9 +19,10 @@ import { StageSelectScreen } from './src/screens/StageSelectScreen';
 import { QuestionIntroScreen } from './src/screens/QuestionIntroScreen';
 import { AnswerSavedScreen } from './src/screens/AnswerSavedScreen';
 import { ResultDetailScreen } from './src/screens/ResultDetailScreen';
+import { backAction, ScreenName } from './src/navigation/backAction';
 
 export default function App() {
-  const [screen, setScreen] = useState<'title' | 'howTo' | 'stages' | 'settings' | 'players' | 'game'>('title');
+  const [screen, setScreen] = useState<ScreenName>('title');
   const [stage, setStage] = useState<Stage>(STAGES[0]);
   const [detailIndex, setDetailIndex] = useState<number | null>(null);
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
@@ -61,6 +62,21 @@ export default function App() {
     setDetailIndex(null);
     setScreen('title');
   }
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const action = backAction(screen, session?.gameStatus, detailIndex !== null);
+    // Active games use GameExit's listener and its existing confirmation modal.
+    if (action === 'confirmExit') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (action === 'system') return false;
+      if (action === 'result') setDetailIndex(null);
+      else if (screen === 'game') void exitGame();
+      else setScreen(action);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [screen, session, detailIndex]);
 
   function start(names: readonly string[]) {
     setSession(createSession(settings, names, stage.questionIds));
