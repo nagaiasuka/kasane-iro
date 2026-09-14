@@ -11,10 +11,14 @@ import { remainingSeconds } from '../game/session';
 import { contains, moveCard, Point, Rect } from '../game/stack';
 import { CardId, Question } from '../types/game';
 
+import { useSound } from '../audio/SoundProvider';
+import { cardDropSound } from '../audio/events';
+
 type Props = { question: Question; playerName: string; questionNumber: number; questionCount: number;
   timeLimit: number | null; onAnswer: (recipe: readonly CardId[], timedOut: boolean) => void };
 
 export function PlayScreen({ question, playerName, questionNumber, questionCount, timeLimit, onAnswer }: Props) {
+  const { playSe } = useSound();
   const compact = useWindowDimensions().height < 740;
   const [stack, setStack] = useState<CardId[]>([]);
   const [active, setActive] = useState<CardId | null>(null);
@@ -63,7 +67,10 @@ export function PlayScreen({ question, playerName, questionNumber, questionCount
     if (submitted.current) return;
     if (deadline.current !== null && Date.now() >= deadline.current) { submit(true); return; }
     const destination = center && contains(hand, center) ? 'hand' : center && contains(field, center) ? 'field' : null;
-    updateStack(moveCard(stackRef.current, id, destination));
+    const next = moveCard(stackRef.current, id, destination);
+    const sound = cardDropSound(stackRef.current, next);
+    updateStack(next);
+    if (sound) playSe(sound);
     setActive(null);
   }
 
@@ -105,7 +112,7 @@ export function PlayScreen({ question, playerName, questionNumber, questionCount
 
         <Text testID="stack-order" style={styles.order} numberOfLines={1}>重ね順（下→上） {stack.length ? stack.map(id => CARD_LABELS[id]).join(' → ') : 'まだ重ねていません'}</Text>
         <View style={styles.actions}>
-          <Pressable accessibilityRole="button" disabled={active !== null} onPress={() => { if (deadline.current !== null && Date.now() >= deadline.current) { submit(true); return; } if (!submitted.current) updateStack([]); }} style={({ pressed }) => [styles.reset, pressed && styles.pressed, active !== null && styles.disabled]}><Text style={styles.resetText}>リセット</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={active !== null} onPress={() => { if (deadline.current !== null && Date.now() >= deadline.current) { submit(true); return; } if (!submitted.current) { const hadCards = stackRef.current.length > 0; updateStack([]); if (hadCards) playSe('reset'); } }} style={({ pressed }) => [styles.reset, pressed && styles.pressed, active !== null && styles.disabled]}><Text style={styles.resetText}>リセット</Text></Pressable>
           <Pressable accessibilityRole="button" disabled={!stack.length || active !== null} onPress={() => submit(deadline.current !== null && Date.now() >= deadline.current)} style={({ pressed }) => [styles.submit, pressed && styles.pressed, (!stack.length || active !== null) && styles.disabled]}><Text style={styles.submitText}>この色で回答する</Text></Pressable>
         </View>
       </View>

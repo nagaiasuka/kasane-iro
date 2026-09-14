@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Platform, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PlayScreen } from './src/screens/PlayScreen';
@@ -21,13 +21,55 @@ import { AnswerSavedScreen } from './src/screens/AnswerSavedScreen';
 import { ResultDetailScreen } from './src/screens/ResultDetailScreen';
 import { backAction, ScreenName } from './src/navigation/backAction';
 
+import { SoundProvider, useSound } from './src/audio/SoundProvider';
+import { SoundSettings } from './src/components/SoundSettings';
+import { sessionSound, resultSound } from './src/audio/events';
+
 export default function App() {
+  return <SoundProvider><AppContent /></SoundProvider>;
+}
+
+function AppContent() {
   const [screen, setScreen] = useState<ScreenName>('title');
+  const { playBgm, stopBgm, playSe } = useSound();
+  const [soundSettingsVisible, setSoundSettingsVisible] = useState(false);
   const [stage, setStage] = useState<Stage>(STAGES[0]);
   const [detailIndex, setDetailIndex] = useState<number | null>(null);
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [session, setSession] = useState<GameSession | null>(null);
   const [savedProgress, setSavedProgress] = useState<SavedAllProgress | null>(null);
+  const sessionRef = useRef<GameSession | null>(null);
+
+  function replaceSession(next: GameSession | null) {
+    sessionRef.current = next;
+    setSession(next);
+  }
+  // Commit the existing session transition once, then request audio outside React's updater.
+  function transitionSession(transition: (current: GameSession) => GameSession) {
+    const current = sessionRef.current;
+    if (!current) return;
+    const next = transition(current);
+    if (next === current) return;
+    replaceSession(next);
+    const sound = sessionSound(current, next);
+    if (sound) playSe(sound);
+  }
+  function navigate(next: ScreenName) {
+    if (next !== screen) playSe('button');
+    setScreen(next);
+  }
+  function revealDetail(index: number) {
+    if (!session || index === detailIndex) return;
+    setDetailIndex(index);
+    playSe(resultSound(session.answers.filter(a => a.questionId === session.questions[index].id).map(a => a.score)));
+  }
+
+  useEffect(() => {
+    if (screen !== 'game') playBgm('menu');
+    else if (session?.gameStatus === 'questionResult' || session?.gameStatus === 'finished') stopBgm();
+    else playBgm('play');
+  }, [screen, session?.gameStatus, playBgm, stopBgm]);
+
 
   useEffect(() => {
     let active = true;
@@ -58,9 +100,9 @@ export default function App() {
         } catch { /* タイトルへ戻る操作は妨げない */ }
       }
     }
-    setSession(null);
+    replaceSession(null);
     setDetailIndex(null);
-    setScreen('title');
+    navigate('title');
   }
 
   useEffect(() => {
@@ -72,15 +114,15 @@ export default function App() {
       if (action === 'system') return false;
       if (action === 'result') setDetailIndex(null);
       else if (screen === 'game') void exitGame();
-      else setScreen(action);
+      else navigate(action);
       return true;
     });
     return () => subscription.remove();
   }, [screen, session, detailIndex]);
 
   function start(names: readonly string[]) {
-    setSession(createSession(settings, names, stage.questionIds));
-    setScreen('game');
+    replaceSession(createSession(settings, names, stage.questionIds));
+    navigate('game');
   }
 
   function resumeAllQuestions() {
@@ -88,9 +130,9 @@ export default function App() {
     const savedStage = findStage(savedProgress.stageId) || STAGES[0];
     setStage(savedStage);
     setSettings(savedProgress.session.settings);
-    setSession(savedProgress.session);
+    replaceSession(savedProgress.session);
     setDetailIndex(null);
-    setScreen('game');
+    navigate('game');
   }
 
   function game() {
@@ -98,18 +140,18 @@ export default function App() {
     const player = session.players[session.currentPlayerIndex];
     switch (session.gameStatus) {
       case 'handoff': return <HandoffScreen name={player.name} questionNumber={session.currentQuestionIndex + 1} total={session.questions.length}
-        onReady={() => setSession(current => current && ready(current))} />;
+        onReady={() => transitionSession(current => ready(current))} />;
       case 'questionIntro': return <QuestionIntroScreen question={session.currentQuestion} number={session.currentQuestionIndex + 1}
-        total={session.questions.length} playerName={player.name} onStart={() => setSession(current => current && startQuestion(current))} />;
+        total={session.questions.length} playerName={player.name} onStart={() => transitionSession(current => startQuestion(current))} />;
       case 'answerSaved': return <AnswerSavedScreen playerName={player.name} multiplayer={session.players.length > 1}
         nextPlayer={session.currentPlayerIndex + 1 < session.players.length} showQuestionResult={session.settings.resultTiming === 'question'}
-        lastQuestion={session.currentQuestionIndex + 1 === session.questions.length} onNext={() => setSession(current => current && continueAfterAnswer(current))} />;
+        lastQuestion={session.currentQuestionIndex + 1 === session.questions.length} onNext={() => transitionSession(current => continueAfterAnswer(current))} />;
       case 'playing': return <PlayScreen key={`${session.currentQuestion.id}:${player.id}`}
         question={session.currentQuestion} playerName={player.name} questionNumber={session.currentQuestionIndex + 1}
         questionCount={session.questions.length} timeLimit={session.settings.timeLimit}
-        onAnswer={(recipe, timedOut) => setSession(current => current && saveAnswer(current, player.id, session.currentQuestion.id, recipe, timedOut))} />;
-      case 'questionResult': return <QuestionResultScreen session={session} onNext={() => setSession(current => current && nextQuestion(current))} />;
-      case 'finished': return detailIndex !== null ? <ResultDetailScreen session={session} questionIndex={detailIndex} onBack={() => setDetailIndex(null)} /> : <FinalResultScreen onDetail={setDetailIndex} session={session} onReplay={() => setSession(createSession(session.settings, session.players.map(p => p.name), stage.questionIds))}
+        onAnswer={(recipe, timedOut) => transitionSession(current => saveAnswer(current, player.id, session.currentQuestion.id, recipe, timedOut))} />;
+      case 'questionResult': return <QuestionResultScreen session={session} onNext={() => transitionSession(current => nextQuestion(current))} />;
+      case 'finished': return detailIndex !== null ? <ResultDetailScreen session={session} questionIndex={detailIndex} onBack={() => setDetailIndex(null)} /> : <FinalResultScreen onDetail={revealDetail} session={session} onReplay={() => replaceSession(createSession(session.settings, session.players.map(p => p.name), stage.questionIds))}
         onTitle={exitGame} />;
     }
   }
@@ -119,12 +161,14 @@ export default function App() {
     : undefined;
 
   return <SafeAreaProvider><StatusBar barStyle="dark-content" backgroundColor="#F7F4EC" />
-    {screen === 'title' && <TitleScreen onStart={() => setScreen('stages')} onHowTo={() => setScreen('howTo')}
-      onResume={savedProgress ? resumeAllQuestions : undefined} resumeLabel={resumeLabel} />}
-    {screen === 'howTo' && <HowToPlayScreen onBack={() => setScreen('title')} />}
-    {screen === 'stages' && <StageSelectScreen onSelect={selected => { setStage(selected); setScreen('settings'); }} onBack={() => setScreen('title')} />}
-    {screen === 'settings' && <GameSettingsScreen onBack={() => setScreen('stages')} stageName={stage.name} questionTotal={stage.questionIds.length} settings={settings} onChange={setSettings} onNext={() => setScreen('players')} />}
-    {screen === 'players' && <PlayerSetupScreen count={settings.playerCount} onStart={start} onBack={() => setScreen('settings')} />}
+    {screen === 'title' && <TitleScreen onStart={() => navigate('stages')} onHowTo={() => navigate('howTo')}
+      onResume={savedProgress ? resumeAllQuestions : undefined} resumeLabel={resumeLabel}
+      onSettings={() => { playSe('button'); setSoundSettingsVisible(true); }} />}
+    {screen === 'howTo' && <HowToPlayScreen onBack={() => navigate('title')} />}
+    {screen === 'stages' && <StageSelectScreen onSelect={selected => { setStage(selected); navigate('settings'); }} onBack={() => navigate('title')} />}
+    {screen === 'settings' && <GameSettingsScreen onBack={() => navigate('stages')} stageName={stage.name} questionTotal={stage.questionIds.length} settings={settings} onChange={setSettings} onNext={() => navigate('players')} />}
+    {screen === 'players' && <PlayerSetupScreen count={settings.playerCount} onStart={start} onBack={() => navigate('settings')} />}
     {screen === 'game' && <GameExit enabled={session?.gameStatus !== 'finished'} preserveProgress={session?.settings.questionCount === 'all'} onExit={exitGame}>{game()}</GameExit>}
+    <SoundSettings visible={soundSettingsVisible} onClose={() => setSoundSettingsVisible(false)} />
   </SafeAreaProvider>;
 }

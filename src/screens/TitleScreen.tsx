@@ -1,8 +1,9 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Button, Screen } from '../components/Screen';
 
-export function TitleScreen({ onStart, onHowTo, onResume, resumeLabel }: {
+export function TitleScreen({ onStart, onHowTo, onResume, resumeLabel, onSettings }: {
+  onSettings: () => void;
   onStart: () => void;
   onHowTo: () => void;
   onResume?: () => void;
@@ -16,5 +17,9 @@ export function TitleScreen({ onStart, onHowTo, onResume, resumeLabel }: {
     {onResume && <Button label={resumeLabel || '全問のつづきから'} onPress={onResume} />}
     <Button label="ゲームをはじめる" onPress={onStart} />
     <Button label="遊び方" secondary onPress={onHowTo} />
+    <Pressable accessibilityRole="button" accessibilityLabel="設定" onPress={onSettings}
+      style={({ pressed }) => ({ alignSelf: 'center', minHeight: 44, minWidth: 80, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}>
+      <Text style={{ color: '#7D8372', fontSize: 13 }}>設定</Text>
+    </Pressable>
   </Screen>;
 }
